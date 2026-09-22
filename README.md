@@ -125,7 +125,7 @@ Each feature in `src/features/` contains:
 
 ## 📱 Screenshots
 
-*(Add screenshots of key features here)*
+*(No screenshot yet)*
 
 ## 🤝 Contributing
 
