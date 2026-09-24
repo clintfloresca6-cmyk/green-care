@@ -11,7 +11,7 @@ GreenCare is a full-stack application designed to help plant enthusiasts manage 
 ```
 GreenCare/
 ├── client/              # React + Vite frontend application
-├── server/             # Node.js/Express/MySQL API
+├── backend/             # Node.js/Express/MySQL API
 ├── documentation/       # Project documentation and walkthroughs
 ├── prototype/           # Original HTML/CSS/JS prototype
 └── README.md
@@ -65,7 +65,7 @@ GreenCare/
 ### Backend Setup
 1. Navigate to the backend directory:
    ```bash
-   cd server
+   cd backend
    ```
 2. Install dependencies:
    ```bash
@@ -125,7 +125,7 @@ Each feature in `src/features/` contains:
 
 ## 📱 Screenshots
 
-*(No screenshot yet)*
+*(Add screenshots of key features here)*
 
 ## 🤝 Contributing
 
