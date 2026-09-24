@@ -89,17 +89,6 @@ export function AdminShell({ children, activeSection, onSectionChange }) {
           {/* Divider */}
           <div className="admin-sidebar-divider" />
 
-          {/* Back to app */}
-          <div className="admin-sidebar-section-label">User Area</div>
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() => goTo('dashboard')}
-          >
-            <span className="nav-icon" data-icon="dashboard" />
-            Back to App
-          </button>
-
           {/* Footer */}
           <div className="sidebar-footer">
             <div className="sidebar-profile" style={{ cursor: 'default' }}>
@@ -134,10 +123,10 @@ export function AdminShell({ children, activeSection, onSectionChange }) {
               <button
                 type="button"
                 className="admin-crumb-back"
-                onClick={() => goTo('dashboard')}
-                title="Back to app"
+                onClick={() => goTo('admin')}
+                title="Back to admin"
               >
-                ← App
+                ← Admin
               </button>
               <span className="admin-crumb-sep">/</span>
               <span className="admin-crumb-current">Admin Console</span>
