@@ -65,7 +65,7 @@ GreenCare/
 ### Backend Setup
 1. Navigate to the backend directory:
    ```bash
-   cd backend
+   cd server
    ```
 2. Install dependencies:
    ```bash
