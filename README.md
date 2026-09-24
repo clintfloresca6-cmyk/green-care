@@ -24,7 +24,7 @@ GreenCare/
 - Implements all 11 pages from the original prototype
 - Responsive design with dark/light theme support
 
-### Backend (backend/)
+### Server (server/)
 - Node.js with Express framework
 - MySQL database integration
 - RESTful API endpoints
@@ -62,7 +62,7 @@ GreenCare/
 - MySQL database
 - npm or yarn package manager
 
-### Backend Setup
+### Server Setup
 1. Navigate to the backend directory:
    ```bash
    cd backend
@@ -71,7 +71,7 @@ GreenCare/
    ```bash
    npm install
    ```
-3. Create a `.env` file based on the example (if provided) and configure:
+3. Create a `.env` file based on the example and configure:
    - Database connection details
    - Server port
    - Any required API keys
@@ -100,8 +100,6 @@ GreenCare/
 4. The application will be available at `http://localhost:5174` (or another port if 5174 is in use)
 
 ## 📚 Documentation
-
-- [Walkthrough Documentation](documentation/walkthrough.md) - Detailed implementation summary
 - [GreenCare.pdf](documentation/GreenCare.pdf) - Additional project documentation
 
 ## 🏗️ Architecture
@@ -122,22 +120,6 @@ Each feature in `src/features/` contains:
 - Feature-specific components
 - Styles
 - Any feature-specific utilities
-
-## 📱 Screenshots
-
-*(Add screenshots of key features here)*
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the ISC License - see the [backend/package.json](backend/package.json) for details.
 
 ## 🙏 Acknowledgments
 
