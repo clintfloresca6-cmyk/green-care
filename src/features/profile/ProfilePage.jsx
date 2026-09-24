@@ -1,12 +1,22 @@
 import { useState } from 'react'
 import { Avatar } from '../../shared/components/Avatar.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
+import { useAuth } from '../../features/auth/AuthContext.jsx'
 
 export function ProfilePage() {
   const { state, actions } = useGreenCare()
-  const [form, setForm] = useState(state.profile)
+  const { currentUser, updateUserProfile: updateAuthUser } = useAuth()
+  const [form, setForm] = useState(currentUser ? currentUser : state.profile)
 
   function save() {
+    // Update auth user
+    updateAuthUser({
+      name: form.name,
+      email: form.email,
+      location: form.location,
+      photo: form.photo,
+    })
+    // Update GreenCare state's profile
     actions.updateProfile({
       name: form.name.trim() || state.profile.name,
       email: form.email.trim(),
