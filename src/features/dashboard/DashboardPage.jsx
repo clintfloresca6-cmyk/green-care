@@ -1,11 +1,13 @@
 import { goTo } from '../../app/routes.js'
 import { TaskRow } from '../../shared/components/TaskRow.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
+import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus, emojiFor, taskIcon } from '../../shared/utils/plants.js'
 
 export function DashboardPage() {
   const { state } = useGreenCare()
+  const { currentUser } = useAuth()
   const dueToday = state.tasks.filter((task) => computeTaskStatus(task) === 'today').length
   const completedThisWeek = state.tasks.filter((task) => task.status === 'completed' && daysBetween(task.date, todayISO()) <= 7 && daysBetween(task.date, todayISO()) >= 0).length
   const needsAttention = state.plants.filter((plant) => plant.health === 'Needs Attention' || plant.health === 'Critical').length
@@ -23,7 +25,7 @@ export function DashboardPage() {
     <section className="page active">
       <div className="page-head">
         <div>
-          <h1>{greetingText(state.profile.name)}</h1>
+          <h1>{greetingText(currentUser ? currentUser.name : state.profile.name)}</h1>
           <p className="muted">Let's keep your plants happy and healthy today.</p>
         </div>
         <div className="today-chip">{fmtDate(todayISO())}</div>
