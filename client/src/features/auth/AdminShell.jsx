@@ -120,14 +120,6 @@ export function AdminShell({ children, activeSection, onSectionChange }) {
 
             {/* Breadcrumb */}
             <div className="admin-topbar-crumb">
-              <button
-                type="button"
-                className="admin-crumb-back"
-                onClick={() => goTo('admin')}
-                title="Back to admin"
-              >
-                ← Admin
-              </button>
               <span className="admin-crumb-sep">/</span>
               <span className="admin-crumb-current">Admin Console</span>
               <span className="admin-crumb-sep">/</span>
