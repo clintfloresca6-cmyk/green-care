@@ -13,7 +13,6 @@ GreenCare/
 ├── client/              # React + Vite frontend application
 ├── server/             # Node.js/Express/MySQL API
 ├── documentation/       # Project documentation and walkthroughs
-├── prototype/           # Original HTML/CSS/JS prototype
 └── README.md
 ```
 
