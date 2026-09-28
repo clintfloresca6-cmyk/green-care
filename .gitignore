@@ -12,8 +12,11 @@ dist
 dist-ssr
 *.local
 /server/db
-/server/src
+/server/src/config
+trefle.controller.js
+trefle.routes.js
 prototype
+
 
 # Editor directories and files
 .vscode/*
