@@ -13,5 +13,6 @@ router.get('/:id', plantsController.get)
 router.post('/', validate(createPlantSchema), plantsController.create)
 router.patch('/:id', validate(updatePlantSchema), plantsController.update)
 router.delete('/:id', plantsController.archive)
+router.post('/analyze-image', plantsController.analyzeImage)
 
 export default router
