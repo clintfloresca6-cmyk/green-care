@@ -11,10 +11,6 @@ node_modules
 dist
 dist-ssr
 *.local
-/server/db
-/server/src/config
-trefle.controller.js
-trefle.routes.js
 prototype
 
 
