@@ -30,6 +30,7 @@ export function GreenCareProvider({ children }) {
         settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
         activity: [],
         adminReports: [],
+        modal: null,
       }
     }
 
@@ -53,6 +54,7 @@ export function GreenCareProvider({ children }) {
       activity: [],
       adminReports: [],
       toasts: [],
+      modal: null, // { type: string, props: object } | null
     }
   })
 
@@ -151,12 +153,18 @@ export function GreenCareProvider({ children }) {
   }, [])
 
   const actions = {
-    // Modal actions (simplified - in a full app these would update modal state)
+    // Modal actions
     openModal: (type, props = {}) => {
-      console.log('Opening modal:', type, props)
+      setState(prev => ({
+        ...prev,
+        modal: { type, props }
+      }));
     },
     closeModal: () => {
-      console.log('Closing modal')
+      setState(prev => ({
+        ...prev,
+        modal: null
+      }));
     },
     toast: (message) => {
       const toast = {

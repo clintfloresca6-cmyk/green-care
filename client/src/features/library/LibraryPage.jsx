@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor } from '../../shared/utils/plants.js'
+import { ModalRenderer } from '../../shared/components/ModalRenderer.jsx'
+import { Modal } from './Modal.jsx'
 
 const filters = [
   ['all', 'All'],
@@ -20,6 +22,8 @@ export function LibraryPage() {
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalPlantData, setModalPlantData] = useState(null)
   const query = search.trim().toLowerCase()
 
   // Fetch Trefle plants on mount or when filter/search changes
@@ -89,11 +93,7 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="toolbar" style={{ flexShrink: 0 }}>
-          <div className="empty-state"><h3>Loading plant data...</h3></div>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="toolbar" style={{ flexShrink: 0 }}>
           <div className="empty-state"><h3>Error loading data</h3><p>{error}</p></div>
         </div>
@@ -120,10 +120,18 @@ export function LibraryPage() {
             <div className="library-grid">
               {plants.map((plant) => (
                 <button className="species-card" type="button" key={plant.id} onClick={() => {
-                  // Open modal with complete Trefle plant data
-                  actions.openModal('trefle-species', { plantData: plant })
+                  setModalPlantData(plant);
+                  setModalOpen(true);
                 }}>
-                  <div className="species-icon">{emojiFor(plant.common_name || '')}</div>
+                  {plant.photo_url ? (
+                    <img
+                      src={plant.photo_url}
+                      alt={`${plant.common_name || 'Plant'} photo`}
+                      className="species-icon"
+                    />
+                  ) : (
+                    <div className="species-icon">{emojiFor(plant.common_name || '')}</div>
+                  )}
                   <div className="species-name">{plant.common_name || 'Unknown'}</div>
                   <div className="species-sci">{plant.scientific_name || ''}</div>
                   <div className="species-tags">
@@ -159,6 +167,10 @@ export function LibraryPage() {
           )}
         </>
       )}
+      {modalOpen && <Modal plantData={modalPlantData} onClose={() => {
+        setModalOpen(false);
+        setModalPlantData(null);
+      }} />}
     </section>
-  )
+  );
 }

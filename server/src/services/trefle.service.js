@@ -80,10 +80,44 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
  * @returns {Object} - Mapped plant data
  */
 export function mapPlantToRow(plant) {
-  // Extract the main image URL from the images array if available
-  const photoUrl = plant.images && plant.images.length > 0
-    ? plant.images[0].url
-    : null;
+  // Extract the main image URL from various possible locations
+  let photoUrl = null;
+
+  // Try the standard images array first
+  if (plant.images && Array.isArray(plant.images) && plant.images.length > 0) {
+    // Handle case where images array contains objects with url property
+    if (plant.images[0] && typeof plant.images[0] === 'object' && plant.images[0].url) {
+      photoUrl = plant.images[0].url;
+    }
+    // Handle case where images array contains direct URLs
+    else if (typeof plant.images[0] === 'string') {
+      photoUrl = plant.images[0];
+    }
+  }
+
+  // Fallback: check for thumbnail or main_image properties
+  if (!photoUrl) {
+    if (plant.thumbnail && typeof plant.thumbnail === 'string') {
+      photoUrl = plant.thumbnail;
+    } else if (plant.thumbnail && typeof plant.thumbnail === 'object' && plant.thumbnail.url) {
+      photoUrl = plant.thumbnail.url;
+    } else if (plant.main_image && typeof plant.main_image === 'string') {
+      photoUrl = plant.main_image;
+    } else if (plant.main_image && typeof plant.main_image === 'object' && plant.main_image.url) {
+      photoUrl = plant.main_image.url;
+    }
+  }
+
+  // Fallback: check for image_url or similar direct properties
+  if (!photoUrl) {
+    if (plant.image_url && typeof plant.image_url === 'string') {
+      photoUrl = plant.image_url;
+    } else if (plant.image && typeof plant.image === 'string') {
+      photoUrl = plant.image;
+    } else if (plant.image && typeof plant.image === 'object' && plant.image.url) {
+      photoUrl = plant.image.url;
+    }
+  }
 
   // Determine light level based on Trefle's growth.light value
   let lightLevel = 'medium'; // default

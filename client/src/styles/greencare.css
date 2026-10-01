@@ -1080,6 +1080,8 @@ a,
   background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease;
@@ -1091,15 +1093,30 @@ a,
 }
 
 .species-icon {
-  width: 52px;
-  height: 52px;
+  width: 10rem;
+  height: 10rem;
   border-radius: 14px;
   background: var(--sage-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 26px;
   margin-bottom: 10px;
+  object-fit: cover;
+}
+
+.species-image{
+  display: flex;
+  justify-content: center;
+}
+
+.species-image img{
+  height: 20rem;
+  border-radius: 3%;
+  object-fit: cover;
+}
+
+.species-care-info{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .species-name {
@@ -1117,6 +1134,8 @@ a,
 
 .species-tags {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
 }
@@ -1852,8 +1871,7 @@ a,
   border-radius: var(--radius-lg);
   width: 560px;
   max-width: 100%;
-  max-height: 88vh;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: var(--shadow-md);
   animation: modalIn .18s ease;
 }
@@ -1891,6 +1909,8 @@ a,
 }
 
 .modal-body {
+  display: flex;
+  flex-direction: column;
   padding: 20px 22px;
 }
 
