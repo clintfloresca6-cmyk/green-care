@@ -33,8 +33,8 @@ export async function createForUser(userId, payload) {
   const id = randomUUID().replace(/-/g, '').slice(0, 26)
   await pool.query(
     `INSERT INTO journal_entries
-       (id, user_id, plant_id, activity, entry_date, notes)
-     VALUES (?,?,?,?,?,?)`,
+       (id, user_id, plant_id, activity, entry_date, notes, photo_url)
+     VALUES (?,?,?,?,?,?,?)`,
     [
       id,
       userId,
@@ -42,6 +42,7 @@ export async function createForUser(userId, payload) {
       payload.activity,
       payload.entry_date,
       payload.notes ?? null,
+      payload.photo_url ?? null,
     ],
   )
 

@@ -61,9 +61,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
     }
     setLoading(true)
     setError('')
-    // Simulate async check
-    await new Promise((r) => setTimeout(r, 600))
-    const result = login(email, password)
+    const result = await login(email, password)
     setLoading(false)
     if (!result.success) setError(result.error)
   }
@@ -186,8 +184,7 @@ function SignupForm() {
     if (password !== confirm) { setError('Passwords do not match.'); return }
     setLoading(true)
     setError('')
-    await new Promise((r) => setTimeout(r, 700))
-    const result = signup(name, email, password)
+    const result = await signup(name, email, password)
     setLoading(false)
     if (!result.success) setError(result.error)
   }
@@ -282,7 +279,6 @@ function SignupForm() {
             placeholder="Repeat your password"
             value={confirm}
             onChange={(e) => { setConfirm(e.target.value); setError('') }}
-            className={confirm && confirm !== password ? 'error' : ''}
             required
           />
           <button

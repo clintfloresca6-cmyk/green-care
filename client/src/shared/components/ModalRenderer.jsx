@@ -32,6 +32,7 @@ export function ModalRenderer() {
       {modal.type === 'addPlant' ? <AddPlantModal prefill={modal.props} /> : null}
       {modal.type === 'journal' ? <JournalModal preselectPlantId={modal.props.plantId} /> : null}
       {modal.type === 'species' ? <SpeciesModal speciesId={modal.props.speciesId} /> : null}
+      {modal.type === 'trefle-species' ? <TrefleSpeciesModal plantData={modal.props.plantData} /> : null}
       {modal.type === 'editPlant' ? <EditPlantModal plantId={modal.props.plantId} /> : null}
       {modal.type === 'updateHealth' ? <UpdateHealthModal plantId={modal.props.plantId} /> : null}
       {modal.type === 'diagnosis' ? <DiagnosisModal /> : null}
@@ -245,20 +246,66 @@ function UpdateHealthModal({ plantId }) {
   )
 }
 
+async function analyzePlantImage(base64Image) {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/plants/analyze-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ image: base64Image }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data.result
+  } catch (error) {
+    console.error('Failed to analyze plant image:', error)
+    throw error
+  }
+}
+
 function DiagnosisModal() {
   const [photo, setPhoto] = useState(null)
   const [phase, setPhase] = useState('idle')
   const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
   const [barWidth, setBarWidth] = useState(0)
 
   function analyze() {
+    if (!photo) return
+
     setPhase('loading')
     setBarWidth(0)
+    setError(null)
+
+    // Simulate progress
     window.setTimeout(() => setBarWidth(100), 50)
-    window.setTimeout(() => {
-      setResult(diagnosisResults[Math.floor(Math.random() * diagnosisResults.length)])
-      setPhase('done')
-    }, 1100)
+
+    // Actually analyze the image
+    analyzePlantImage(photo)
+      .then((analysisResult) => {
+        setResult(analysisResult)
+        setPhase('done')
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to analyze image')
+        setPhase('error')
+      })
+      .finally(() => {
+        window.setTimeout(() => setBarWidth(0), 100)
+      })
+  }
+
+  function retry() {
+    setPhase('idle')
+    setResult(null)
+    setError(null)
+    setPhoto(null)
   }
 
   return (
@@ -267,7 +314,7 @@ function DiagnosisModal() {
         {phase === 'idle' ? (
           <>
             <label className="dropzone">
-              {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag &amp; drop a photo here</strong><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>This is a simulated prototype; no image is actually analyzed by AI.</p></>}
+              {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
               <input type="file" accept="image/*" hidden onChange={(event) => readFile(event.currentTarget.files?.[0]).then(setPhoto)} />
             </label>
             <button className="btn btn-primary" type="button" disabled={!photo} onClick={analyze}>Analyze Plant</button>
@@ -277,20 +324,58 @@ function DiagnosisModal() {
           <>
             <p style={{ textAlign: 'center', fontWeight: 600 }}>Analyzing your plant photo...</p>
             <div className="loading-bar"><div className="loading-bar-fill" style={{ width: `${barWidth}%` }}></div></div>
-            <p className="muted" style={{ textAlign: 'center', fontSize: 12.5 }}>Simulated analysis; this takes just a moment.</p>
+            <p className="muted" style={{ textAlign: 'center', fontSize: 12.5 }}>This may take a moment...</p>
           </>
         ) : null}
         {phase === 'done' && result ? (
           <>
             <div className="diag-result">
-              <p style={{ fontSize: 15 }}><strong>Possible Issue: {result.issue}</strong><span className="confidence-badge">Confidence: {result.confidence}%</span></p>
-              <strong style={{ fontSize: 12.5, color: 'var(--ink-600)', display: 'block', marginTop: 12 }}>Possible Causes</strong>
-              <ul>{result.causes.map((item) => <li key={item}>{item}</li>)}</ul>
-              <strong style={{ fontSize: 12.5, color: 'var(--ink-600)', display: 'block' }}>Recommended Actions</strong>
-              <ul>{result.actions.map((item) => <li key={item}>{item}</li>)}</ul>
-              <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>This is a simulated result for prototype purposes and does not reflect real AI diagnosis.</p>
+              <p style={{ fontSize: 15 }}><strong>Diagnosis Result:</strong> {result}</p>
+              {result === "The image must be plant" && (
+                <>
+                  <p style={{ color: 'var(--brick-500)', marginTop: 8, fontSize: 13 }}>
+                    The image doesn't appear to contain a plant. Please try another photo with a clear view of a plant.
+                  </p>
+                </>
+              )}
+              {result !== "The image must be plant" && (
+                <>
+                  <p style={{ marginTop: 12, fontSize: 13 }}>
+                    Based on the analysis, your plant appears to be: <strong style={{ textTransform: 'capitalize' }}>{result}</strong>
+                  </p>
+                  <p style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-600)' }}>
+                    This assessment can help you update your plant's health status in the Health or Plant Detail pages.
+                  </p>
+                </>
+              )}
             </div>
-            <div className="modal-actions"><button className="btn btn-secondary" type="button" onClick={() => { setPhoto(null); setPhase('idle'); setResult(null); setBarWidth(0) }}>Try Another Photo</button></div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" type="button" onClick={retry}>Try Another Photo</button>
+              {result !== "The image must be plant" && (
+                <button className="btn btn-primary" type="button" onClick={() => {
+                  // Suggest updating health based on result
+                  const healthMapping = {
+                    "Healthy": "Healthy",
+                    "Good": "Good",
+                    "Needs Attention": "Needs Attention",
+                    "Critical": "Critical"
+                  }
+                  const suggestedHealth = healthMapping[result] || "Healthy"
+                  actions.closeModal()
+                  // Note: In a real app, we might auto-navigate to update health with this suggestion
+                }}>Suggest Health Update</button>
+              )}
+            </div>
+          </>
+        ) : null}
+        {phase === 'error' && error ? (
+          <>
+            <p style={{ textAlign: 'center', color: 'var(--brick-500)' }}>
+              Analysis failed: {error}
+            </p>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" type="button" onClick={retry}>Try Again</button>
+            </div>
           </>
         ) : null}
       </div>
@@ -314,7 +399,6 @@ function SpeciesAdminModal({ speciesId }) {
           <Field label="Common Name"><input name="common" required defaultValue={species?.common || ''} /></Field>
           <Field label="Scientific Name"><input name="scientific" required defaultValue={species?.scientific || ''} /></Field>
           <Field label="Difficulty"><Select name="difficulty" options={['Beginner', 'Intermediate', 'Advanced']} value={species?.difficulty} /></Field>
-          <Field label="Light"><input name="light" placeholder="e.g. Bright Indirect" defaultValue={species?.light || ''} /></Field>
           <Field label="Watering"><input name="watering" placeholder="e.g. Weekly" defaultValue={species?.watering || ''} /></Field>
         </div>
         <ModalActions submitLabel="Save Species" />
@@ -332,6 +416,67 @@ function ConfirmModal({ title, message, actionLabel, onConfirm }) {
         <div className="modal-actions">
           <button className="btn btn-secondary" type="button" onClick={actions.closeModal}>Cancel</button>
           <button className="btn btn-danger" type="button" onClick={onConfirm}>{actionLabel}</button>
+        </div>
+      </div>
+    </ModalFrame>
+  )
+}
+
+function TrefleSpeciesModal({ plantData }) {
+  if (!plantData) return null
+
+  return (
+    <ModalFrame title={plantData.common_name || 'Unknown Plant'}>
+      <div className="modal-body">
+        {plantData.photo_url ? (
+          <div className="species-image">
+            <img src={plantData.photo_url} alt={plantData.common_name} />
+          </div>
+        ) : (
+          <div className="species-icon" style={{ fontSize: 60, width: 80, height: 80 }}>
+            🌱
+          </div>
+        )}
+        <div className="species-info">
+          <h2>{plantData.common_name || 'Unknown'}</h2>
+          <p className="species-scientific" style={{ fontStyle: 'italic', margin: '8px 0' }}>
+            {plantData.scientific_name || ''}
+          </p>
+          {plantData.description && (
+            <p className="species-description" style={{ margin: '16px 0', lineHeight: '1.5' }}>
+              {plantData.description}
+            </p>
+          )}
+          <div className="species-care-info" style={{ margin: '16px 0' }}>
+            <div className="care-info-item">
+              <span className="care-icon">🌞</span>
+              <div>
+                <div className="care-label">Light</div>
+                <div className="care-value">{plantData.light}</div>
+              </div>
+            </div>
+            <div className="care-info-item">
+              <span className="care-icon">💧</span>
+              <div>
+                <div className="care-label">Watering</div>
+                <div className="care-value">{plantData.watering}</div>
+              </div>
+            </div>
+            <div className="care-info-item">
+              <span className="care-icon">🌿</span>
+              <div>
+                <div className="care-label">Fertilizing</div>
+                <div className="care-value">{plantData.fertilizing}</div>
+              </div>
+            </div>
+            <div className="care-info-item">
+              <span className="care-icon">📈</span>
+              <div>
+                <div className="care-label">Difficulty</div>
+                <div className="care-value">{plantData.difficulty}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </ModalFrame>

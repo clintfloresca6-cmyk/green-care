@@ -47,9 +47,9 @@ export function AppShell({ page, children }) {
   }
 
   // Display name and photo from auth user (with fallback to profile)
-  const displayName = currentUser?.name || state.profile.name
-  const displayPhoto = currentUser?.photo || state.profile.photo
-  const displayRole = currentUser?.role === 'admin' ? 'Admin' : (state.profile.role || 'Plant Enthusiast')
+  const displayName = currentUser?.name || state.profile?.name || ''
+  const displayPhoto = currentUser?.photo || state.profile?.photo || null
+  const displayRole = currentUser?.role === 'admin' ? 'Admin' : (state.profile?.role || 'Plant Enthusiast')
 
   return (
     <>
@@ -163,11 +163,11 @@ function NotificationPanel({ close }) {
       </div>
       <div className="notif-list">
         {sorted.length ? sorted.map((notice) => (
-          <button className={notice.read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
+          <button className={!notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
             <span className="n-icon">{notice.icon}</span>
             <span>
               <span className="n-text">{notice.text}</span>
-              <span className="n-time">{notice.time}</span>
+              <span className="n-time">{notice.notice_date}</span>
             </span>
           </button>
         )) : <p className="muted" style={{ padding: 10 }}>You're all caught up.</p>}

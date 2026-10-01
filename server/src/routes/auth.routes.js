@@ -10,6 +10,8 @@ const router = Router()
 // Public routes (no authentication required)
 router.post('/login', validate(loginSchema), authController.login)
 router.post('/signup', validate(signupSchema), authController.signup)
+router.post('/logout', authController.logout)
+router.get('/me', currentUser, authController.me)
 
 // Protected routes (authentication required)
 router.use(currentUser, requireUser)

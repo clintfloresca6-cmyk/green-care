@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { goTo } from '../../app/routes.js'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
-import { fmtDateShort } from '../../shared/utils/date.js'
+import { fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, taskIcon } from '../../shared/utils/plants.js'
 
 const filters = [
@@ -17,7 +17,7 @@ export function PlantsPage() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const query = search.trim().toLowerCase()
-  let plants = [...state.plants]
+  let plants = Array.isArray(state.plants) ? state.plants.filter(plant => plant && plant.id) : []
 
   if (filter === 'healthy') plants = plants.filter((plant) => plant.health === 'Healthy' || plant.health === 'Good')
   if (filter === 'attention') plants = plants.filter((plant) => plant.health === 'Needs Attention' || plant.health === 'Critical')
@@ -52,18 +52,29 @@ export function PlantsPage() {
           {plants.map((plant) => (
             <button className="plant-card" type="button" key={plant.id} onClick={() => goTo('plants', plant.id)}>
               <div className="plant-thumb" style={{ background: 'var(--sage-100)' }}>
-                {plant.photo ? <img src={plant.photo} alt={plant.name} /> : emojiFor(plant.species)}
+                {plant.photo ? <img src={plant.photo} alt={plant.name || 'Plant'} /> : emojiFor(plant.species || '')}
               </div>
               <div className="plant-card-body">
                 <div className="plant-card-top">
-                  <span className="plant-name">{plant.name}</span>
-                  <span className={`badge badge-${healthClass(plant.health)}`}>{plant.health}</span>
+                  <span className="plant-name">{plant.name || 'Unnamed Plant'}</span>
+                  <span className={`badge badge-${healthClass(plant.health || 'Good')}`}>
+                    {plant.health || 'Good'}
+                  </span>
                 </div>
-                <span className="plant-species">{plant.species}</span>
+                <span className="plant-species">{plant.species || 'Unknown Species'}</span>
                 <div className="plant-meta">
-                  <span>📍 {plant.location}</span>
-                  <span>{taskIcon(plant.nextTask.type)} Next: {plant.nextTask.type} · {fmtDateShort(plant.nextTask.date)}</span>
-                  <span>💧 Last watered: {fmtDateShort(plant.lastWatered)}</span>
+                  <span>📍 {plant.location || 'Unknown location'}</span>
+                  <span>
+                    {plant.nextTask ? (
+                      <>
+                        {taskIcon(plant.nextTask.type || 'Check')} Next: {plant.nextTask.type || 'Check'} ·
+                        {fmtDateShort(plant.nextTask.date || todayISO())}
+                      </>
+                    ) : 'No upcoming tasks'}
+                  </span>
+                  <span>
+                    💧 Last watered: {plant.lastWatered ? fmtDateShort(plant.lastWatered) : 'Never'}
+                  </span>
                 </div>
                 <div className="plant-card-actions">
                   <span className="btn btn-secondary btn-sm">View Details</span>

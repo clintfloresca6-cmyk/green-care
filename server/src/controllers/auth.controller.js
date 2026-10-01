@@ -5,6 +5,28 @@ import { pool } from '../config/db.js'
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body
   const user = await authService.login(email, password)
+
+  // Create session
+  req.session.userId = user.id
+  req.session.user = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    photo_url: user.photo_url
+  }
+
+  // Explicitly save session to ensure it's persisted
+  await new Promise((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+
   res.json({ data: user })
 })
 
@@ -60,4 +82,39 @@ export const archive = asyncHandler(async (req, res) => {
   }
 
   res.status(204).end()
+})
+
+export const logout = asyncHandler(async (req, res) => {
+  // Destroy the session
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to logout' })
+    }
+    res.status(204).end()
+  })
+})
+
+export const me = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    // Debug information to help understand session state
+    const sessionInfo = {
+      sessionExists: req.session !== undefined,
+      sessionId: req.sessionID ?? null,
+      userId: req.session?.userId ?? null,
+      hasUserObject: req.session?.user !== null,
+      cookie: req.headers.cookie ?? null
+    }
+
+    // In development, provide more details; in production, keep it generic
+    if (process.env.NODE_ENV === 'development') {
+      res.status(401).json({
+        error: 'Not authenticated',
+        debug: sessionInfo
+      })
+    } else {
+      res.status(401).json({ error: 'Not authenticated' })
+    }
+    return
+  }
+  res.json({ data: req.user })
 })

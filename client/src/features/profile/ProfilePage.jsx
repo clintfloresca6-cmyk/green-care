@@ -6,7 +6,7 @@ import { useAuth } from '../../features/auth/AuthContext.jsx'
 export function ProfilePage() {
   const { state, actions } = useGreenCare()
   const { currentUser, updateUserProfile: updateAuthUser } = useAuth()
-  const [form, setForm] = useState(currentUser ? currentUser : state.profile)
+  const [form, setForm] = useState(currentUser ? currentUser : (state.profile ?? { name: '', email: '', location: '', photo: null }))
 
   function save() {
     // Update auth user
@@ -18,10 +18,10 @@ export function ProfilePage() {
     })
     // Update GreenCare state's profile
     actions.updateProfile({
-      name: form.name.trim() || state.profile.name,
-      email: form.email.trim(),
-      location: form.location.trim(),
-      photo: form.photo,
+      name: form.name.trim() || (state.profile?.name ?? ''),
+      email: form.email.trim() || (state.profile?.email ?? ''),
+      location: form.location.trim() || (state.profile?.location ?? ''),
+      photo: form.photo ?? (state.profile?.photo ?? null),
     })
   }
 

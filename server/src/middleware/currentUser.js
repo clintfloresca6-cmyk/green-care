@@ -1,10 +1,12 @@
-// Placeholder until JWT arrives. Derives the current user from a header
-// the frontend sends. Swap the body of this middleware in Phase 6.
 import { ApiError } from '../utils/ApiError.js'
 
 export function currentUser(req, _res, next) {
-  const userId = req.headers['x-user-id'] ?? null
-  req.user = userId ? { id: userId } : null
+  // Get user from session
+  const userId = req.session.userId ?? null
+  const user = req.session.user ?? null
+
+  // Attach user to request object
+  req.user = userId && user ? { id: userId, ...user } : null
   next()
 }
 

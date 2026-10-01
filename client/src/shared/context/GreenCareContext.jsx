@@ -1,271 +1,418 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { buildDefaultState } from '../../data/mockData.js'
-import { currentTimeLabel, todayISO } from '../utils/date.js'
-import { computeTaskStatus, uid, waterFrequencyDays } from '../utils/plants.js'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { useAuth } from '../../features/auth/AuthContext'
 
-const STORAGE_KEY = 'greencare_state_v2'
+// ─── Static Data (equivalent to mock data healthIssues) ────────────────────────
+const HEALTH_ISSUES = {
+  'Yellow Leaves': { causes: ['Overwatering', 'Insufficient light', 'Nutrient deficiency'], tips: ['Check soil moisture before watering again', 'Review watering frequency', 'Move the plant to appropriate lighting'] },
+  Wilting: { causes: ['Underwatering', 'Root stress', 'Heat exposure'], tips: ['Water thoroughly and check drainage', 'Move away from direct heat sources', "Check roots aren't bound or rotting"] },
+  Pests: { causes: ['Poor air circulation', 'Overwatering', 'Nearby infested plants'], tips: ['Isolate the affected plant', 'Wipe leaves with diluted neem oil', 'Improve airflow around the plant'] },
+  'Brown Leaves': { causes: ['Low humidity', 'Mineral buildup from tap water', 'Sunburn'], tips: ['Increase humidity with a tray or misting', 'Use filtered or rested water', 'Move out of direct harsh sun'] },
+  Overwatering: { causes: ['Watering on a fixed schedule', 'Poor drainage', 'Pot without drainage holes'], tips: ['Let soil dry before watering again', 'Ensure pots have drainage holes', 'Repot in well-draining soil if needed'] },
+  Underwatering: { causes: ['Forgetting scheduled waterings', 'Fast-draining soil mix', 'Low humidity environment'], tips: ['Set reminders for consistent watering', 'Water deeply until it drains out the bottom', 'Group plants to raise local humidity'] },
+}
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 const GreenCareContext = createContext(null)
 
 export function GreenCareProvider({ children }) {
-  const [state, setState] = useState(loadState)
-  const [modal, setModal] = useState(null)
-  const [toasts, setToasts] = useState([])
+  const { currentUser: authUser } = useAuth()
+  const [state, setState] = useState(() => {
+    // If no auth user, return minimal state
+    if (!authUser) {
+      return {
+        plants: [],
+        tasks: [],
+        journal: [],
+        notifications: [],
+        library: [],
+        healthIssues: HEALTH_ISSUES,
+        profile: null,
+        settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
+        activity: [],
+        adminReports: [],
+      }
+    }
 
+    // If auth user exists but we haven't fetched data yet, start with empty collections
+    // They will be populated by the effect below
+    return {
+      plants: [],
+      tasks: [],
+      journal: [],
+      notifications: [],
+      library: [],
+      healthIssues: HEALTH_ISSUES,
+      profile: {
+        id: authUser.id,
+        name: authUser.name,
+        email: authUser.email,
+        role: authUser.role,
+        photo: authUser.photo || null,
+      },
+      settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
+      activity: [],
+      adminReports: [],
+      toasts: [],
+    }
+  })
+
+  // Fetch initial data when auth user changes (login/logout)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    document.documentElement.setAttribute('data-theme', state.settings.theme)
-  }, [state])
+    if (!authUser) return
 
-  function toast(message) {
-    const id = uid('toast')
-    setToasts((items) => [...items, { id, message }])
-    window.setTimeout(() => {
-      setToasts((items) => items.filter((item) => item.id !== id))
-    }, 2800)
-  }
+    // Fetch all initial data for the logged-in user
+    const fetchInitialData = async () => {
+      try {
+        // Fetch plants
+        const plantsData = await authFetch('/plants')
+        const plants = plantsData.data || []
 
-  function changeState(recipe) {
-    setState((current) => {
-      const next = structuredClone(current)
-      recipe(next)
-      return next
-    })
-  }
+        // Fetch tasks
+        const tasksData = await authFetch('/tasks')
+        const tasks = tasksData.data || []
+
+        // Fetch journal entries
+        const journalData = await authFetch('/journal')
+        const journal = journalData.data || []
+
+        // Fetch notifications
+        const notificationsData = await authFetch('/notifications')
+        const notifications = notificationsData.data || []
+
+        // Fetch library species
+        const libraryData = await authFetch('/library')
+        const library = libraryData.data || []
+
+        // Fetch admin reports (only for admins)
+        let adminReports = []
+        if (authUser.role === 'admin') {
+          const adminData = await authFetch('/admin')
+          adminReports = adminData.data || []
+        }
+
+        // Update state with fetched data
+        setState(prev => ({
+          ...prev,
+          plants,
+          tasks,
+          journal,
+          notifications,
+          library,
+          adminReports,
+          // Activity will be computed below
+        }))
+
+        // Compute activity from recent journal and tasks
+        const recentJournal = [...journal].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
+        const recentTasks = [...tasks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
+        const activity = [
+          ...recentJournal.map(entry => ({
+            text: entry.activity,
+            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          })),
+          ...recentTasks.map(task => ({
+            text: `${task.type} ${task.plant_id ? '(for plant)' : ''}`,
+            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          }))
+        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8)
+
+        setState(prev => ({ ...prev, activity }))
+
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error)
+        // Keep existing state if fetch fails
+      }
+    }
+
+    fetchInitialData()
+  }, [authUser])
+
+  // Helper to make authenticated fetch calls
+  const authFetch = useCallback(async (endpoint, options = {}) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        credentials: 'include',
+        ...options
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Request failed: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      throw error
+    }
+  }, [])
 
   const actions = {
-    openModal: (type, props = {}) => setModal({ type, props }),
-    closeModal: () => setModal(null),
-    toast,
+    // Modal actions (simplified - in a full app these would update modal state)
+    openModal: (type, props = {}) => {
+      console.log('Opening modal:', type, props)
+    },
+    closeModal: () => {
+      console.log('Closing modal')
+    },
+    toast: (message) => {
+      const toast = {
+        id: Date.now() + Math.random(),
+        message,
+      };
+      setState(prev => ({
+        ...prev,
+        toasts: [...prev.toasts, toast],
+      }));
+      setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          toasts: prev.toasts.filter(t => t.id !== toast.id),
+        }));
+      }, 3000);
+    },
     resetData() {
-      setState(buildDefaultState())
-      toast('Prototype data reset')
+      // This clears the data collections (plants, tasks, journal, notifications, library, activity, adminReports, toasts)
+      setState(prev => ({
+        ...prev,
+        plants: [],
+        tasks: [],
+        journal: [],
+        notifications: [],
+        library: [],
+        activity: [],
+        adminReports: [],
+        toasts: [],
+      }))
     },
 
-    completeTask(taskId) {
-      changeState((draft) => {
-        const task = draft.tasks.find((item) => item.id === taskId)
-        if (!task) return
-        task.status = 'completed'
-        const plant = draft.plants.find((item) => item.id === task.plantId)
-        if (plant) {
-          if (task.type === 'Water') plant.lastWatered = todayISO()
-          draft.activity.unshift({
-            text: `${task.type === 'Water' ? 'Watered' : `${task.type}d`} ${plant.name}`,
-            time: `${todayISO()} · ${currentTimeLabel()}`,
-          })
-        }
-      })
-      toast('Task marked complete')
+    // Plant actions
+    async listPlants() {
+      try {
+        const result = await authFetch('/plants')
+        setState(prev => ({ ...prev, plants: result.data || [] }))
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to list plants:', error)
+        throw error
+      }
     },
-    addPlant(payload) {
-      const waterDays = waterFrequencyDays(payload.watering)
-      const id = uid('p')
-      changeState((draft) => {
-        const plant = {
-          id,
-          name: payload.name,
-          species: payload.species,
-          location: payload.location || 'Unspecified',
-          zone: /balcon|outdoor|garden|patio/i.test(payload.location || '') ? 'outdoor' : 'indoor',
-          light: payload.light,
-          watering: payload.watering,
-          fertilizing: payload.fertilizing,
-          health: 'Good',
-          lastWatered: todayISO(),
-          nextTask: { type: 'Water', date: todayISO(waterDays) },
-          notes: payload.notes || '',
-          photo: payload.photo || null,
-          added: todayISO(),
-          timeline: [{ label: 'Plant added', date: todayISO() }],
-        }
-        draft.plants.unshift(plant)
-        draft.tasks.push({
-          id: uid('t'),
-          plantId: id,
-          type: 'Water',
-          date: todayISO(waterDays),
-          time: draft.settings.reminderTime || '08:00',
-          status: 'pending',
-          priority: 'medium',
+
+    async getPlant(plantId) {
+      try {
+        const result = await authFetch(`/plants/${plantId}`)
+        return result.data
+      } catch (error) {
+        console.error('Failed to get plant:', error)
+        throw error
+      }
+    },
+
+    async createPlant(payload) {
+      try {
+        const result = await authFetch('/plants', {
+          method: 'POST',
+          body: JSON.stringify(payload)
         })
-        draft.activity.unshift({ text: `Added ${plant.name} to My Plants`, time: `${todayISO()} · ${currentTimeLabel()}` })
-      })
-      setModal(null)
-      toast('Plant added successfully')
-      return id
+        // Update the plants list
+        setState(prev => ({
+          ...prev,
+          plants: [...prev.plants, result.data]
+        }))
+        return result.data
+      } catch (error) {
+        console.error('Failed to create plant:', error)
+        throw error
+      }
     },
-    editPlant(payload) {
-      changeState((draft) => {
-        const plant = draft.plants.find((item) => item.id === payload.id)
-        if (!plant) return
-        plant.name = payload.name
-        plant.species = payload.species
-        plant.location = payload.location
-        plant.health = payload.health
-        plant.notes = payload.notes
-      })
-      setModal(null)
-      toast('Plant details updated')
-    },
-    archivePlant(plantId) {
-      changeState((draft) => {
-        draft.plants = draft.plants.filter((plant) => plant.id !== plantId)
-        draft.tasks = draft.tasks.filter((task) => task.plantId !== plantId)
-      })
-      setModal(null)
-      toast('Plant archived')
-    },
-    quickCare(plantId, type) {
-      changeState((draft) => {
-        const plant = draft.plants.find((item) => item.id === plantId)
-        if (!plant) return
-        const nextDays = type === 'Water' ? 7 : 30
-        if (type === 'Water') plant.lastWatered = todayISO()
-        plant.nextTask = { type, date: todayISO(nextDays) }
-        plant.timeline.push({ label: type === 'Water' ? 'Watered' : 'Fertilized', date: todayISO() })
-        draft.journal.unshift({
-          id: uid('j'),
-          plantId,
-          activity: type === 'Water' ? 'Watered' : 'Fertilized',
-          date: todayISO(),
-          notes: `${type} completed from plant details.`,
-          photo: null,
+
+    async updatePlant(plantId, patch) {
+      try {
+        const result = await authFetch(`/plants/${plantId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(patch)
         })
-        draft.activity.unshift({ text: `${type === 'Water' ? 'Watered' : 'Fertilized'} ${plant.name}`, time: `${todayISO()} · ${currentTimeLabel()}` })
-      })
-      toast(`${type} logged`)
+        // Update the specific plant in the list
+        setState(prev => ({
+          ...prev,
+          plants: prev.plants.map(plant =>
+            plant.id === plantId ? result.data : plant
+          )
+        }))
+        return result.data
+      } catch (error) {
+        console.error('Failed to update plant:', error)
+        throw error
+      }
     },
-    addJournal(payload) {
-      changeState((draft) => {
-        const plant = draft.plants.find((item) => item.id === payload.plantId)
-        const entry = {
-          id: uid('j'),
-          plantId: payload.plantId,
-          activity: payload.activity,
-          date: payload.date || todayISO(),
-          notes: payload.notes || '',
-          photo: payload.photo || null,
-        }
-        draft.journal.unshift(entry)
-        if (plant) {
-          plant.timeline.push({ label: entry.activity, date: entry.date })
-          draft.activity.unshift({ text: `${entry.activity} ${plant.name}`, time: `${entry.date} · ${currentTimeLabel()}` })
-        }
-      })
-      setModal(null)
-      toast('Journal entry added')
-    },
-    updateHealth(payload) {
-      changeState((draft) => {
-        const plant = draft.plants.find((item) => item.id === payload.id)
-        if (!plant) return
-        plant.health = payload.health
-        plant.timeline.push({ label: 'Health updated', date: todayISO() })
-        draft.activity.unshift({ text: `Updated ${plant.name} health`, time: `${todayISO()} · ${currentTimeLabel()}` })
-        if (payload.note) {
-          draft.journal.unshift({
-            id: uid('j'),
-            plantId: plant.id,
-            activity: 'Checked Health',
-            date: todayISO(),
-            notes: payload.note,
-            photo: null,
-          })
-        }
-      })
-      setModal(null)
-      toast('Plant health updated')
-    },
-    updateSettings(patch) {
-      changeState((draft) => {
-        draft.settings = { ...draft.settings, ...patch }
-      })
-      toast('Settings updated')
-    },
-    updateProfile(patch) {
-      changeState((draft) => {
-        draft.profile = { ...draft.profile, ...patch }
-      })
-      toast('Profile saved')
-    },
-    markNotificationRead(id) {
-      changeState((draft) => {
-        const notice = draft.notifications.find((item) => item.id === id)
-        if (notice) notice.read = true
-      })
-    },
-    markAllRead() {
-      changeState((draft) => {
-        draft.notifications.forEach((notice) => {
-          notice.read = true
+
+    async archivePlant(plantId) {
+      try {
+        await authFetch(`/plants/${plantId}`, {
+          method: 'DELETE'
         })
-      })
-      toast('All notifications marked as read')
+        // Remove from plants list
+        setState(prev => ({
+          ...prev,
+          plants: prev.plants.filter(plant => plant.id !== plantId)
+        }))
+      } catch (error) {
+        console.error('Failed to archive plant:', error)
+        throw error
+      }
     },
-    clearNotifications() {
-      changeState((draft) => {
-        draft.notifications = []
-      })
-      toast('Notifications cleared')
+
+    // Task actions
+    async listTasks() {
+      try {
+        const result = await authFetch('/tasks')
+        setState(prev => ({ ...prev, tasks: result.data || [] }))
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to list tasks:', error)
+        throw error
+      }
     },
-    saveSpecies(payload) {
-      changeState((draft) => {
-        if (payload.id) {
-          const item = draft.library.find((species) => species.id === payload.id)
-          if (item) Object.assign(item, payload)
-        } else {
-          draft.library.push({
-            id: uid('s'),
-            common: payload.common,
-            scientific: payload.scientific,
-            difficulty: payload.difficulty,
-            light: payload.light,
-            watering: payload.watering,
-            fertilizing: 'Monthly',
-            zone: 'indoor',
-            lightLevel: 'medium',
-            description: 'Added via the admin console.',
-            problems: ['General care sensitivity'],
-            tips: ['Follow the watering and light guidance above.'],
-          })
+
+    async createTask(payload) {
+      try {
+        const result = await authFetch('/tasks', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+        setState(prev => ({
+          ...prev,
+          tasks: [...prev.tasks, result.data]
+        }))
+        return result.data
+      } catch (error) {
+        console.error('Failed to create task:', error)
+        throw error
+      }
+    },
+
+    async completeTask(taskId) {
+      try {
+        const result = await authFetch(`/tasks/${taskId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'completed' })
+        })
+        // Update the specific task
+        setState(prev => ({
+          ...prev,
+          tasks: prev.tasks.map(task =>
+            task.id === taskId ? result.data : task
+          )
+        }))
+        return result.data
+      } catch (error) {
+        console.error('Failed to complete task:', error)
+        throw error
+      }
+    },
+
+    // Journal actions
+    async listJournal() {
+      try {
+        const result = await authFetch('/journal')
+        setState(prev => ({ ...prev, journal: result.data || [] }))
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to list journal:', error)
+        throw error
+      }
+    },
+
+    async createJournalEntry(payload) {
+      try {
+        const result = await authFetch('/journal', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+        setState(prev => ({
+          ...prev,
+          journal: [...prev.journal, result.data]
+        }))
+        // Also update activity
+        const newActivity = {
+          text: payload.activity,
+          time: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         }
-      })
-      setModal(null)
-      toast(payload.id ? 'Species updated' : 'Species added')
+        setState(prev => ({
+          ...prev,
+          activity: [newActivity, ...prev.activity].slice(0, 8)
+        }))
+        return result.data
+      } catch (error) {
+        console.error('Failed to create journal entry:', error)
+        throw error
+      }
     },
-    deleteSpecies(id) {
-      changeState((draft) => {
-        draft.library = draft.library.filter((species) => species.id !== id)
-      })
-      setModal(null)
-      toast('Species deleted')
+
+    // Notification actions
+    async listNotifications() {
+      try {
+        const result = await authFetch('/notifications')
+        setState(prev => ({ ...prev, notifications: result.data || [] }))
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to list notifications:', error)
+        throw error
+      }
     },
-    updateReport(id, status) {
-      changeState((draft) => {
-        const report = draft.adminReports.find((item) => item.id === id)
-        if (report) report.status = status
-      })
-      toast(status === 'resolved' ? 'Report resolved' : 'Report dismissed')
+
+    async markNotificationRead(notificationId) {
+      try {
+        await authFetch(`/notifications/${notificationId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ is_read: true })
+        })
+        // Update the specific notification
+        setState(prev => ({
+          ...prev,
+          notifications: prev.notifications.map(notif =>
+            notif.id === notificationId ? { ...notif, is_read: true } : notif
+          )
+        }))
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error)
+        throw error
+      }
     },
+
+    // Library actions
+    async listLibrary() {
+      try {
+        const result = await authFetch('/library')
+        setState(prev => ({ ...prev, library: result.data || [] }))
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to list library:', error)
+        throw error
+      }
+    }
   }
 
-  const unreadCount = state.notifications.filter((notice) => !notice.read).length
-  const value = { state, actions, modal, toasts, unreadCount, computeTaskStatus }
+  const isAuthenticated = Boolean(authUser)
 
-  return <GreenCareContext value={value}>{children}</GreenCareContext>
+  return (
+    <GreenCareContext
+      value={{
+        state,
+        actions,
+        isAuthenticated
+      }}
+    >
+      {children}
+    </GreenCareContext>
+  )
 }
 
 export function useGreenCare() {
   const value = useContext(GreenCareContext)
   if (!value) throw new Error('useGreenCare must be used within GreenCareProvider')
   return value
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : buildDefaultState()
-  } catch {
-    return buildDefaultState()
-  }
 }

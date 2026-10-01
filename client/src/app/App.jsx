@@ -84,8 +84,8 @@ function renderPage(page, detailId) {
   if (page === 'plants' && detailId) return <PlantDetailPage plantId={detailId} />
   if (page === 'plants') return <PlantsPage />
   if (page === 'library') return <LibraryPage />
-  if (page === 'schedule') return <SchedulePage />
-  if (page === 'journal') return <JournalPage />
+  // if (page === 'schedule') return <SchedulePage />
+  // if (page === 'journal') return <JournalPage />
   if (page === 'health') return <HealthPage />
   if (page === 'reports') return <ReportsPage />
   if (page === 'notifications') return <NotificationsPage />

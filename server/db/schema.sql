@@ -64,6 +64,7 @@ CREATE TABLE species (
   zone           ENUM('indoor','outdoor') NOT NULL DEFAULT 'indoor',
   light_level    ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   description    TEXT         NULL,
+  photo_url      VARCHAR(500) NULL,
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -84,6 +85,7 @@ CREATE TABLE species_cache (
   zone           ENUM('indoor','outdoor') NOT NULL DEFAULT 'indoor',
   light_level    ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   description    TEXT         NULL,
+  photo_url      VARCHAR(500) NULL,
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -173,7 +175,7 @@ CREATE TABLE plants (
   next_task_date  DATE         NULL,
   notes           TEXT         NULL,
   photo_url       VARCHAR(500) NULL,
-  added           DATE         NULL,
+  added_at        DATE         NULL,
   archived_at     DATETIME     NULL,                    -- when plant was archived (soft delete)
   created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -256,6 +258,7 @@ CREATE TABLE notifications (
   text         VARCHAR(500) NOT NULL,
   notice_date  DATE         NOT NULL,
   is_read      TINYINT(1)   NOT NULL DEFAULT 0,
+  read_at      DATETIME     NULL,
   page         VARCHAR(32)  NULL,       -- 'plants' | 'health' | 'schedule' | 'reports'
   plant_id     VARCHAR(32)  NULL,
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -322,6 +325,18 @@ CREATE TABLE system_settings (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+--  SESSIONS
+-- ============================================================
+
+DROP TABLE IF EXISTS sessions;
+CREATE TABLE sessions (
+  session_id VARCHAR(128) NOT NULL,
+  expires DATETIME NOT NULL,
+  data TEXT NULL,
+  PRIMARY KEY (session_id)
+) ENGINE=InnoDB;
+
+-- ============================================================
 --  SEED DATA
 -- ============================================================
 
@@ -334,15 +349,15 @@ INSERT INTO user_settings (user_id) VALUES ('u_admin'), ('u_user');
 
 -- ── Species library ─────────────────────────────────────────
 INSERT INTO species
-  (id, common_name, scientific_name, difficulty, light, watering, fertilizing, zone, light_level, description) VALUES
-  ('s1', 'Monstera Deliciosa', 'Monstera deliciosa',       'Beginner',     'Bright Indirect',      'Weekly',            'Monthly during growing season', 'indoor',  'medium', 'A fast-growing tropical climber known for its dramatic split leaves. Thrives with something to climb on.'),
-  ('s2', 'Snake Plant',        'Dracaena trifasciata',     'Beginner',     'Low to Bright Indirect','Every 2-3 weeks',   'Every 2 months',                'indoor',  'low',    'An upright, sculptural plant that tolerates neglect and low light exceptionally well.'),
-  ('s3', 'Aloe Vera',          'Aloe barbadensis miller',  'Beginner',     'Full Sun',             'Every 2-3 weeks',   'Seasonal, light feeding',       'outdoor', 'medium', 'A succulent prized for its soothing gel and easygoing care needs.'),
-  ('s4', 'Pothos',             'Epipremnum aureum',        'Beginner',     'Low to Medium Light',  'Weekly',            'Monthly',                       'indoor',  'low',    'A trailing vine that adapts to almost any indoor condition, a favorite first plant.'),
-  ('s5', 'Peace Lily',         'Spathiphyllum wallisii',   'Intermediate', 'Medium Light',         'Weekly',            'Every 6 weeks',                 'indoor',  'medium', 'An elegant flowering houseplant that dramatically droops to signal thirst.'),
-  ('s6', 'Basil',              'Ocimum basilicum',         'Beginner',     'Full Sun',             'Every 2-3 days',    'Every 2 weeks',                 'indoor',  'medium', 'A fragrant culinary herb that rewards frequent harvesting with bushier growth.'),
-  ('s7', 'Spider Plant',       'Chlorophytum comosum',     'Beginner',     'Bright Indirect',      'Every 7-10 days',   'Monthly',                       'indoor',  'medium', 'A resilient plant that produces charming plantlets on long stems.'),
-  ('s8', 'English Ivy',        'Hedera helix',             'Intermediate', 'Medium Light',         'Weekly',            'Monthly',                       'indoor',  'medium', 'A classic trailing vine that enjoys cooler, humid rooms like bathrooms.');
+  (id, common_name, scientific_name, difficulty, light, watering, fertilizing, zone, light_level, description, photo_url) VALUES
+  ('s1', 'Monstera Deliciosa', 'Monstera deliciosa',       'Beginner',     'Bright Indirect',      'Weekly',            'Monthly during growing season', 'indoor',  'medium', 'A fast-growing tropical climber known for its dramatic split leaves. Thrives with something to climb on.', NULL),
+  ('s2', 'Snake Plant',        'Dracaena trifasciata',     'Beginner',     'Low to Bright Indirect','Every 2-3 weeks',   'Every 2 months',                'indoor',  'low',    'An upright, sculptural plant that tolerates neglect and low light exceptionally well.', NULL),
+  ('s3', 'Aloe Vera',          'Aloe barbadensis miller',  'Beginner',     'Full Sun',             'Every 2-3 weeks',   'Seasonal, light feeding',       'outdoor', 'medium', 'A succulent prized for its soothing gel and easygoing care needs.', NULL),
+  ('s4', 'Pothos',             'Epipremnum aureum',        'Beginner',     'Low to Medium Light',  'Weekly',            'Monthly',                       'indoor',  'low',    'A trailing vine that adapts to almost any indoor condition, a favorite first plant.', NULL),
+  ('s5', 'Peace Lily',         'Spathiphyllum wallisii',   'Intermediate', 'Medium Light',         'Weekly',            'Every 6 weeks',                 'indoor',  'medium', 'An elegant flowering houseplant that dramatically droops to signal thirst.', NULL),
+  ('s6', 'Basil',              'Ocimum basilicum',         'Beginner',     'Full Sun',             'Every 2-3 days',    'Every 2 weeks',                 'indoor',  'medium', 'A fragrant culinary herb that rewards frequent harvesting with bushier growth.', NULL),
+  ('s7', 'Spider Plant',       'Chlorophytum comosum',     'Beginner',     'Bright Indirect',      'Every 7-10 days',   'Monthly',                       'indoor',  'medium', 'A resilient plant that produces charming plantlets on long stems.', NULL),
+  ('s8', 'English Ivy',        'Hedera helix',             'Intermediate', 'Medium Light',         'Weekly',            'Monthly',                       'indoor',  'medium', 'A classic trailing vine that enjoys cooler, humid rooms like bathrooms.', NULL);
 
 -- Populate species_cache with data from species
 INSERT INTO species_cache
@@ -445,7 +460,7 @@ INSERT INTO health_issue_tips (issue_id, tip, sort_order) VALUES
 -- ── User plants (owned by the demo regular user) ────────────
 INSERT INTO plants
   (id, user_id, species_id, name, species_name, location, zone, light, watering, fertilizing,
-   health, last_watered, next_task_type, next_task_date, notes, added, archived_at) VALUES
+   health, last_watered, next_task_type, next_task_date, notes, added_at, archived_at) VALUES
   ('p1','u_user','s1','Luna',   'Monstera Deliciosa','Living Room Window','indoor', 'Bright Indirect','Weekly',          'Monthly',          'Good',           CURDATE() - INTERVAL 4 DAY,  'Water',     CURDATE() + INTERVAL 1 DAY,  'Loves the morning light by the window.',          CURDATE() - INTERVAL 60 DAY, NULL),
   ('p2','u_user','s6','Basil',  'Ocimum Basilicum',  'Kitchen Sill',      'indoor', 'Full Sun',       'Every 3 days',    'Every 2 weeks',    'Needs Attention',CURDATE() - INTERVAL 3 DAY,  'Fertilize', CURDATE(),                   'Wilting a little after the heat wave.',           CURDATE() - INTERVAL 40 DAY, NULL),
   ('p3','u_user','s3','Sunny',  'Aloe Vera',         'Balcony',           'outdoor','Full Sun',       'Every 2 weeks',   'Seasonal',         'Healthy',        CURDATE() - INTERVAL 9 DAY,  'Water',     CURDATE() + INTERVAL 4 DAY,  'Very low maintenance, thriving.',                 CURDATE() - INTERVAL 120 DAY, NULL),

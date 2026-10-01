@@ -1,133 +1,135 @@
-import { createContext, useCallback, useContext, useState } from 'react'
-
-const AUTH_KEY = 'greencare_auth_v1'
-const ACCOUNTS_KEY = 'greencare_accounts_v1'
-
-// ─── Hardcoded seed accounts ──────────────────────────────────────────────────
-const SEED_ACCOUNTS = [
-  {
-    id: 'u_admin',
-    name: 'Admin User',
-    email: 'admin@greencare.app',
-    password: 'admin123',
-    role: 'admin',
-    photo: null,
-  },
-  {
-    id: 'u_user',
-    name: 'Jane Botanist',
-    email: 'user@greencare.app',
-    password: 'user123',
-    role: 'user',
-    photo: null,
-  },
-]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function loadAccounts() {
-  try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY)
-    return raw ? JSON.parse(raw) : SEED_ACCOUNTS
-  } catch {
-    return SEED_ACCOUNTS
-  }
-}
-
-function saveAccounts(accounts) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
-}
-
-function loadSession() {
-  try {
-    const raw = localStorage.getItem(AUTH_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function saveSession(user) {
-  if (user) {
-    localStorage.setItem(AUTH_KEY, JSON.stringify(user))
-  } else {
-    localStorage.removeItem(AUTH_KEY)
-  }
-}
+import { createContext, useCallback, useContext, useState, useEffect } from 'react'
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(loadSession)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
-  const login = useCallback((email, password) => {
-    const accounts = loadAccounts()
-    const account = accounts.find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password,
-    )
-    if (!account) {
-      return { success: false, error: 'Invalid email or password. Please try again.' }
+  // Check for existing session on app load
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          const userData = await response.json()
+          const session = {
+            id: userData.data.id,
+            name: userData.data.name,
+            email: userData.data.email,
+            role: userData.data.role,
+            photo: userData.data.photo_url || null,
+          }
+          setCurrentUser(session)
+        } else {
+          setCurrentUser(null)
+        }
+      } catch (error) {
+        console.error('Failed to check auth status:', error)
+        setCurrentUser(null)
+      } finally {
+        setCheckingAuth(false)
+      }
     }
-    const session = {
-      id: account.id,
-      name: account.name,
-      email: account.email,
-      role: account.role,
-      photo: account.photo,
-    }
-    saveSession(session)
-    setCurrentUser(session)
-    return { success: true }
+
+    checkAuthStatus()
   }, [])
 
-  const signup = useCallback((name, email, password) => {
-    const accounts = loadAccounts()
-    const exists = accounts.some(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase(),
-    )
-    if (exists) {
-      return { success: false, error: 'An account with this email already exists.' }
+  const login = useCallback(async (email, password) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Login failed')
+      }
+
+      const userData = await response.json()
+      const session = {
+        id: userData.data.id,
+        name: userData.data.name,
+        email: userData.data.email,
+        role: userData.data.role,
+        photo: userData.data.photo_url || null,
+      }
+
+      setCurrentUser(session)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
     }
-    const newAccount = {
-      id: `u_${Date.now()}`,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      role: 'user',
-      photo: null,
-    }
-    const updated = [...accounts, newAccount]
-    saveAccounts(updated)
-    const session = {
-      id: newAccount.id,
-      name: newAccount.name,
-      email: newAccount.email,
-      role: newAccount.role,
-      photo: newAccount.photo,
-    }
-    saveSession(session)
-    setCurrentUser(session)
-    return { success: true }
   }, [])
 
-  const logout = useCallback(() => {
-    saveSession(null)
+  const signup = useCallback(async (name, email, password) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Signup failed')
+      }
+
+      const userData = await response.json()
+      const session = {
+        id: userData.data.id,
+        name: userData.data.name,
+        email: userData.data.email,
+        role: userData.data.role,
+        photo: userData.data.photo_url || null,
+      }
+
+      setCurrentUser(session)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }, [])
+
+  const logout = useCallback(async () => {
+  try {
+    await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+  } finally {
     setCurrentUser(null)
-  }, [])
+  }
+}, [])
 
   const updateUserProfile = useCallback((patch) => {
     setCurrentUser((prev) => {
       const updated = { ...prev, ...patch }
-      saveSession(updated)
       return updated
     })
   }, [])
 
-  const isAuthenticated = Boolean(currentUser)
+  const isAuthenticated = !checkingAuth && Boolean(currentUser)
 
   return (
     <AuthContext
-      value={{ currentUser, isAuthenticated, login, signup, logout, updateUserProfile }}
+      value={{ currentUser, isAuthenticated, login, signup, logout, updateUserProfile, checkingAuth }}
     >
       {children}
     </AuthContext>

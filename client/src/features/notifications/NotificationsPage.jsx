@@ -4,7 +4,7 @@ import { fmtDate } from '../../shared/utils/date.js'
 
 export function NotificationsPage() {
   const { state, actions } = useGreenCare()
-  const notifications = [...state.notifications].sort((a, b) => (a.read === b.read ? 0 : a.read ? 1 : -1))
+  const notifications = [...state.notifications].sort((a, b) => (a.is_read === b.is_read ? 0 : a.is_read ? 1 : -1))
 
   function openNotice(notice) {
     actions.markNotificationRead(notice.id)
@@ -26,11 +26,11 @@ export function NotificationsPage() {
       </div>
       <div className="notif-list notif-list--page">
         {notifications.length ? notifications.map((notice) => (
-          <button className={notice.read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotice(notice)}>
+          <button className={notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotice(notice)}>
             <span className="n-icon">{notice.icon}</span>
             <span>
               <span className="n-text">{notice.text}</span>
-              <span className="n-time">{fmtDate(notice.time)}</span>
+              <span className="n-time">{fmtDate(notice.notice_date)}</span>
             </span>
           </button>
         )) : <p className="muted">You're all caught up.</p>}

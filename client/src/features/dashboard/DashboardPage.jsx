@@ -25,7 +25,7 @@ export function DashboardPage() {
     <section className="page active">
       <div className="page-head">
         <div>
-          <h1>{greetingText(currentUser ? currentUser.name : state.profile.name)}</h1>
+          <h1>{greetingText(currentUser ? currentUser.name : (state.profile?.name || ''))}</h1>
           <p className="muted">Let's keep your plants happy and healthy today.</p>
         </div>
         <div className="today-chip">{fmtDate(todayISO())}</div>
