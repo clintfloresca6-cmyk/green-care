@@ -26,14 +26,15 @@ export async function createForUser(userId, payload) {
   await pool.query(
     `INSERT INTO plants
        (id, user_id, species_id, name, species_name, location, zone,
-        light, watering, fertilizing, health, notes, added_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,CURDATE())`,
+        light, watering, fertilizing, health, notes, photo_url, added_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE())`,
     [
       id, userId, payload.speciesId ?? null, payload.name, payload.speciesName,
       payload.location ?? null, payload.zone ?? 'indoor',
       payload.light ?? null, payload.watering ?? null,
       payload.fertilizing ?? null, payload.health ?? 'Good',
       payload.notes ?? null,
+      payload.photo ?? null,
     ],
   )
   return getForUser(userId, id)
@@ -44,7 +45,7 @@ export async function updateForUser(userId, plantId, patch) {
   const fields = []
   const values = []
   const allowed = ['name', 'species_name', 'location', 'zone', 'light',
-                   'watering', 'fertilizing', 'health', 'notes']
+    'watering', 'fertilizing', 'health', 'notes', 'photo']
   for (const key of allowed) {
     if (patch[key] !== undefined) {
       fields.push(`${key} = ?`)

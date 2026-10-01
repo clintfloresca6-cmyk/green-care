@@ -1010,11 +1010,14 @@ a,
   justify-content: center;
   font-size: 52px;
   position: relative;
+  border-radius: 10px;
+  margin-top: 5px;
 }
 
 .plant-thumb img {
   width: 100%;
   height: 100%;
+  border-radius: 10px;
   object-fit: cover;
 }
 
@@ -1108,7 +1111,7 @@ a,
 }
 
 .species-image img{
-  height: 20rem;
+  height: 15rem;
   border-radius: 3%;
   object-fit: cover;
 }
@@ -1869,7 +1872,7 @@ a,
 .modal {
   background: var(--paper);
   border-radius: var(--radius-lg);
-  width: 560px;
+  min-width: 560px;
   max-width: 100%;
   overflow: hidden;
   box-shadow: var(--shadow-md);

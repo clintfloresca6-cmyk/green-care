@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor } from '../../shared/utils/plants.js'
-import { ModalRenderer } from '../../shared/components/ModalRenderer.jsx'
 import { Modal } from './Modal.jsx'
 
 const filters = [
@@ -22,9 +21,9 @@ export function LibraryPage() {
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPlantData, setModalPlantData] = useState(null)
-  const query = search.trim().toLowerCase()
 
   // Fetch Trefle plants on mount or when filter/search changes
   useEffect(() => {
@@ -167,10 +166,35 @@ export function LibraryPage() {
           )}
         </>
       )}
-      {modalOpen && <Modal plantData={modalPlantData} onClose={() => {
-        setModalOpen(false);
-        setModalPlantData(null);
-      }} />}
+      {modalOpen && <Modal
+        plantData={modalPlantData}
+        onClose={() => {
+          setModalOpen(false);
+          setModalPlantData(null);
+        }}
+        onAddPlant={async (plantData) => {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/plants`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(plantData), // { name, speciesName, location, light, ... }
+            });
+
+            if (!response.ok) {
+              const body = await response.json().catch(() => ({}));
+              throw new Error(body.error || `Failed to add plant: ${response.status}`);
+            }
+
+            setModalOpen(false);
+            setModalPlantData(null);
+          } catch (err) {
+            console.error('Failed to add plant:', err);
+            throw err; // rethrow so AddPlantModal shows its error message
+          }
+        }}
+        showAddPlantButton={true}
+      />}
     </section>
   );
 }

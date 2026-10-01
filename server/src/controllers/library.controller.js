@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js'
 import * as trefleService from '../services/trefle.service.js'
+import * as plantsService from '../services/plants.service.js'
 import { pool } from '../config/db.js'
 
 export const list = asyncHandler(async (req, res) => {
@@ -50,9 +51,8 @@ export const getSpecies = asyncHandler(async (req, res) => {
 })
 
 export const create = asyncHandler(async (req, res) => {
-  // TODO: Implement adding a plant to user's library
-  // For now, return not implemented
-  res.status(501).json({ error: 'Not implemented' })
+  const plant = await plantsService.createForUser(req.user.id, req.body)
+  res.status(201).json({ data: plant })
 })
 
 export const update = asyncHandler(async (req, res) => {

@@ -3,6 +3,7 @@ import { goTo } from '../../app/routes.js'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, taskIcon } from '../../shared/utils/plants.js'
+import { Modal } from '../../features/library/Modal.jsx'
 
 const filters = [
   ['all', 'All'],
@@ -18,6 +19,35 @@ export function PlantsPage() {
   const [search, setSearch] = useState('')
   const query = search.trim().toLowerCase()
   let plants = Array.isArray(state.plants) ? state.plants.filter(plant => plant && plant.id) : []
+  const [showAddPlantModal, setShowAddPlantModal] = useState(false)
+  const [addPlantError, setAddPlantError] = useState('')
+  const [addPlantProcessing, setAddPlantProcessing] = useState(false)
+
+  const handleAddPlant = async (plantData) => {
+    setAddPlantProcessing(true)
+    setAddPlantError('')
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/plants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(plantData), // { name, speciesName, location, light, ... }
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to add plant: ${response.status}`)
+      }
+
+      // Reset form and close modal on success
+      setShowAddPlantModal(false)
+      setAddPlantError('')
+      setAddPlantProcessing(false)
+    } catch (err) {
+      setAddPlantError('Failed to add plant. Please try again.')
+      setAddPlantProcessing(false)
+    }
+  }
 
   if (filter === 'healthy') plants = plants.filter((plant) => plant.health === 'Healthy' || plant.health === 'Good')
   if (filter === 'attention') plants = plants.filter((plant) => plant.health === 'Needs Attention' || plant.health === 'Critical')
@@ -32,7 +62,7 @@ export function PlantsPage() {
           <h1>My Plants</h1>
           <p className="muted">Your personal plant collection, all in one place.</p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => actions.openModal('addPlant')}>+ Add Plant</button>
+        <button className="btn btn-primary" type="button" onClick={() => setShowAddPlantModal(true)}>+ Add Plant</button>
       </div>
 
       <div className="toolbar">
@@ -52,7 +82,7 @@ export function PlantsPage() {
           {plants.map((plant) => (
             <button className="plant-card" type="button" key={plant.id} onClick={() => goTo('plants', plant.id)}>
               <div className="plant-thumb" style={{ background: 'var(--sage-100)' }}>
-                {plant.photo ? <img src={plant.photo} alt={plant.name || 'Plant'} /> : emojiFor(plant.species || '')}
+                {plant.photo_url ? <img src={plant.photo_url} alt={plant.name || 'Plant'} /> : emojiFor(plant.species || '')}
               </div>
               <div className="plant-card-body">
                 <div className="plant-card-top">
@@ -86,6 +116,14 @@ export function PlantsPage() {
       ) : (
         <div className="empty-state"><h3>No plants match this view</h3><p>Try a different filter or search term, or add a new plant.</p></div>
       )}
+      {showAddPlantModal && <Modal
+        onAddPlant={handleAddPlant}
+        onClose={() => {
+          setShowAddPlantModal(false);
+          setAddPlantError('');
+          setAddPlantProcessing(false);
+        }}
+      />}
     </section>
-  )
+  );
 }

@@ -1,70 +1,127 @@
 import { useState } from 'react';
+import { AddPlantModal } from './AddPlantModal';
 
-export function Modal({ plantData, onClose }) {
-  if (!plantData) return null;
+export function Modal({
+  plantData,
+  onClose,
+  onAddPlant,
+  showAddPlantButton = false
+}) {
+  // State for displaying plant data
+  const [modalOpen, setModalOpen] = useState(!!plantData);
+  const [modalPlantData, setModalPlantData] = useState(plantData || null);
 
-  return (
-    <div className="modal-backdrop" onClick={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}>
-      <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', margin: 'auto' }}>
-        <div className="modal-head">
-          <h3>{plantData.common_name || 'Unknown Plant'}</h3>
-          <button className="icon-btn" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          {plantData.photo_url ? (
-            <div className="species-image">
-              <img src={plantData.photo_url} alt={plantData.common_name} />
-            </div>
-          ) : (
-            <div className="species-icon" style={{ fontSize: 60, width: 80, height: 80 }}>
-              🌱
-            </div>
-          )}
-          <div className="species-info">
-            <h2>{plantData.common_name || 'Unknown'}</h2>
-            <p className="species-scientific" style={{ fontStyle: 'italic', margin: '8px 0' }}>
-              {plantData.scientific_name || ''}
-            </p>
-            {plantData.description && (
-              <p className="species-description" style={{ margin: '16px 0', lineHeight: '1.5' }}>
-                {plantData.description}
-              </p>
+  // State for add plant modal
+  const [showAddPlantModal, setShowAddPlantModal] = useState(false);
+
+  // Handle closing modal
+  const handleClose = () => {
+    setModalOpen(false);
+    setModalPlantData(null);
+    setShowAddPlantModal(false);
+    onClose && onClose();
+  };
+
+  // Render plant display modal
+  if (modalOpen && modalPlantData && !showAddPlantModal) {
+    return (
+      <div className="modal-backdrop" onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}>
+        <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', margin: 'auto' }}>
+          <div className="modal-head">
+            <h3>{modalPlantData.common_name || 'Unknown Plant'}</h3>
+            <button className="icon-btn" onClick={onClose}>×</button>
+          </div>
+          <div className="modal-body">
+            {modalPlantData.photo_url ? (
+              <div className="species-image">
+                <img src={modalPlantData.photo_url} alt={modalPlantData.common_name} />
+              </div>
+            ) : (
+              <div className="species-icon" style={{ fontSize: 60, width: 80, height: 80 }}>
+                🌱
+              </div>
             )}
-            <div className="species-care-info" style={{ margin: '16px 0' }}>
-              <div className="care-info-item">
-                <span className="care-icon">🌞</span>
-                <div>
-                  <div className="care-label">Light</div>
-                  <div className="care-value">{plantData.light}</div>
+            <div className="species-info">
+              <h2>{modalPlantData.common_name || 'Unknown'}</h2>
+              <p className="species-scientific" style={{ fontStyle: 'italic', margin: '8px 0' }}>
+                {modalPlantData.scientific_name || ''}
+              </p>
+              {modalPlantData.description && (
+                <p className="species-description" style={{ margin: '16px 0', lineHeight: '1.5' }}>
+                  {modalPlantData.description}
+                </p>
+              )}
+              <div className="species-care-info" style={{ margin: '16px 0' }}>
+                <div className="care-info-item">
+                  <span className="care-icon">🌞</span>
+                  <div>
+                    <div className="care-label">Light</div>
+                    <div className="care-value">{modalPlantData.light}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="care-info-item">
-                <span className="care-icon">💧</span>
-                <div>
-                  <div className="care-label">Watering</div>
-                  <div className="care-value">{plantData.watering}</div>
+                <div className="care-info-item">
+                  <span className="care-icon">💧</span>
+                  <div>
+                    <div className="care-label">Watering</div>
+                    <div className="care-value">{modalPlantData.watering}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="care-info-item">
-                <span className="care-icon">🌿</span>
-                <div>
-                  <div className="care-label">Fertilizing</div>
-                  <div className="care-value">{plantData.fertilizing}</div>
+                <div className="care-info-item">
+                  <span className="care-icon">🌿</span>
+                  <div>
+                    <div className="care-label">Fertilizing</div>
+                    <div className="care-value">{modalPlantData.fertilizing}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="care-info-item">
-                <span className="care-icon">📈</span>
-                <div>
-                  <div className="care-label">Difficulty</div>
-                  <div className="care-value">{plantData.difficulty}</div>
+                <div className="care-info-item">
+                  <span className="care-icon">📈</span>
+                  <div>
+                    <div className="care-label">Difficulty</div>
+                    <div className="care-value">{modalPlantData.difficulty}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          <div className="modal-actions" style={{ marginTop: 'auto', padding: '16px' }}>
+            {showAddPlantButton && onAddPlant && (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowAddPlantModal(true);
+                }}
+              >
+                Add Plant
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Render add plant modal (using AddPlantModal component)
+  if (showAddPlantModal) {
+    return (
+      <div className="modal-backdrop" onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}>
+        <AddPlantModal
+          onClose={handleClose}
+          onAddPlant={onAddPlant}
+          defaultSpecies={modalPlantData?.scientific_name || ''}
+          defaultPhoto={modalPlantData?.photo_url || null}
+        />
+      </div>
+    );
+  }
+
+  // Render nothing if neither state is active
+  return null;
 }
