@@ -118,9 +118,30 @@ export function LibraryPage() {
           }}>
             <div className="library-grid">
               {plants.map((plant) => (
-                <button className="species-card" type="button" key={plant.id} onClick={() => {
-                  setModalPlantData(plant);
-                  setModalOpen(true);
+                <button className="species-card" type="button" key={plant.id} onClick={async () => {
+                  try {
+                    // Fetch specific species data using the new endpoint
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/trefle/species/${plant.id}`, {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      credentials: 'include',
+                    })
+
+                    if (!response.ok) {
+                      throw new Error(`Failed to fetch species data: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+                    setModalPlantData(data.data || null)
+                    setModalOpen(true)
+                  } catch (err) {
+                    console.error('Error fetching species data:', err)
+                    // Fallback to pre-fetched data if API call fails
+                    setModalPlantData(plant)
+                    setModalOpen(true)
+                  }
                 }}>
                   {plant.photo_url ? (
                     <img

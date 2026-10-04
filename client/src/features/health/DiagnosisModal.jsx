@@ -167,7 +167,10 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
                                 {result !== "The image must be plant" && (
                                     <>
                                         <button className="btn btn-primary" type="button" onClick={updateHealth}>Update Health</button>
-                                        <button className="btn btn-secondary" type="button" onClick={retry}>Cancel</button>
+                                        <button className="btn btn-secondary" type="button" onClick={() => {
+                                            retry();
+                                            if (onClose) onClose();
+                                        }}>Cancel</button>
                                     </>
                                 )}
                             </div>

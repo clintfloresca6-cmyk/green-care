@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 
-export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultPhoto = null }) {
+export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultPhoto = null, defaultLight = '', defaultWatering = '', defaultFertilizing = '' }) {
   const [photo, setPhoto] = useState(defaultPhoto);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [species, setSpecies] = useState(defaultSpecies || '');
+  const [light, setLight] = useState(defaultLight || '');
+  const [watering, setWatering] = useState(defaultWatering || '');
+  const [fertilizing, setFertilizing] = useState(defaultFertilizing || '');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,6 +67,27 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
     }
   }, [defaultSpecies, species]);
 
+  // Set light from prop when it changes (but only if not already set by user)
+  useEffect(() => {
+    if (defaultLight && !light) {
+      setLight(defaultLight);
+    }
+  }, [defaultLight, light]);
+
+  // Set watering from prop when it changes (but only if not already set by user)
+  useEffect(() => {
+    if (defaultWatering && !watering) {
+      setWatering(defaultWatering);
+    }
+  }, [defaultWatering, watering]);
+
+  // Set fertilizing from prop when it changes (but only if not already set by user)
+  useEffect(() => {
+    if (defaultFertilizing && !fertilizing) {
+      setFertilizing(defaultFertilizing);
+    }
+  }, [defaultFertilizing, fertilizing]);
+
   return (
     <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', margin: 'auto' }}>
       <div className="modal-head">
@@ -110,6 +134,8 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               <label>Light Condition</label>
               <select
                 name="light"
+                value={light}
+                onChange={(e) => setLight(e.target.value)}
                 disabled={processing}
                 required
               >
@@ -125,6 +151,8 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               <label>Watering Frequency</label>
               <select
                 name="watering"
+                value={watering}
+                onChange={(e) => setWatering(e.target.value)}
                 disabled={processing}
                 required
               >
@@ -139,6 +167,8 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               <label>Fertilizing Frequency</label>
               <select
                 name="fertilizing"
+                value={fertilizing}
+                onChange={(e) => setFertilizing(e.target.value)}
                 disabled={processing}
                 required
               >
@@ -150,7 +180,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               </select>
             </div>
           </div>
-          <div className="form-row">
+          <div class="form-row">
             <label>Notes</label>
             <textarea
               name="notes"
@@ -159,7 +189,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               disabled={processing}
             />
           </div>
-          <div className="form-row">
+          <div class="form-row">
             <label>Plant Photo</label>
             <input
               type="file"
