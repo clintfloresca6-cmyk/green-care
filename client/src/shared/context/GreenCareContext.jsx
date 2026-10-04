@@ -14,6 +14,21 @@ const HEALTH_ISSUES = {
 // ─── Context ──────────────────────────────────────────────────────────────────
 const GreenCareContext = createContext(null)
 
+// Convert an API journal row (snake_case) to the shape the UI expects
+const toJournalEntry = (row) => ({
+  ...row, // keeps created_at, which the activity feed uses
+  plantId: row.plant_id,
+  date: row.entry_date,
+  photo: row.photo_url,
+})
+
+const toTask = (row) => ({
+  ...row, // keeps status, priority, type, created_at, completed_at
+  plantId: row.plant_id,
+  date: row.task_date ? String(row.task_date).slice(0, 10) : null,
+  time: row.task_time,
+})
+
 export function GreenCareProvider({ children }) {
   const { currentUser: authUser } = useAuth()
   const [state, setState] = useState(() => {
@@ -30,7 +45,7 @@ export function GreenCareProvider({ children }) {
         settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
         activity: [],
         adminReports: [],
-        modal: null,
+        toasts: [],
       }
     }
 
@@ -54,7 +69,6 @@ export function GreenCareProvider({ children }) {
       activity: [],
       adminReports: [],
       toasts: [],
-      modal: null, // { type: string, props: object } | null
     }
   })
 
@@ -71,11 +85,11 @@ export function GreenCareProvider({ children }) {
 
         // Fetch tasks
         const tasksData = await authFetch('/tasks')
-        const tasks = tasksData.data || []
+        const tasks = (tasksData.data || []).map(toTask)
 
         // Fetch journal entries
         const journalData = await authFetch('/journal')
-        const journal = journalData.data || []
+        const journal = (journalData.data || []).map(toJournalEntry)
 
         // Fetch notifications
         const notificationsData = await authFetch('/notifications')
@@ -153,18 +167,12 @@ export function GreenCareProvider({ children }) {
   }, [])
 
   const actions = {
-    // Modal actions
+    // Modal actions (simplified - in a full app these would update modal state)
     openModal: (type, props = {}) => {
-      setState(prev => ({
-        ...prev,
-        modal: { type, props }
-      }));
+      console.log('Opening modal:', type, props)
     },
     closeModal: () => {
-      setState(prev => ({
-        ...prev,
-        modal: null
-      }));
+      console.log('Closing modal')
     },
     toast: (message) => {
       const toast = {
@@ -277,8 +285,9 @@ export function GreenCareProvider({ children }) {
     async listTasks() {
       try {
         const result = await authFetch('/tasks')
-        setState(prev => ({ ...prev, tasks: result.data || [] }))
-        return result.data || []
+        const tasks = (result.data || []).map(toTask)
+        setState(prev => ({ ...prev, tasks }))
+        return tasks
       } catch (error) {
         console.error('Failed to list tasks:', error)
         throw error
@@ -293,7 +302,7 @@ export function GreenCareProvider({ children }) {
         })
         setState(prev => ({
           ...prev,
-          tasks: [...prev.tasks, result.data]
+          tasks: [...prev.tasks, toTask(result.data)]
         }))
         return result.data
       } catch (error) {
@@ -309,13 +318,14 @@ export function GreenCareProvider({ children }) {
           body: JSON.stringify({ status: 'completed' })
         })
         // Update the specific task
+        const updated = toTask(result.data)
         setState(prev => ({
           ...prev,
           tasks: prev.tasks.map(task =>
-            task.id === taskId ? result.data : task
+            task.id === taskId ? updated : task
           )
         }))
-        return result.data
+        return updated
       } catch (error) {
         console.error('Failed to complete task:', error)
         throw error
@@ -326,8 +336,9 @@ export function GreenCareProvider({ children }) {
     async listJournal() {
       try {
         const result = await authFetch('/journal')
-        setState(prev => ({ ...prev, journal: result.data || [] }))
-        return result.data || []
+        const journal = (result.data || []).map(toJournalEntry)
+        setState(prev => ({ ...prev, journal }))
+        return journal
       } catch (error) {
         console.error('Failed to list journal:', error)
         throw error
@@ -340,9 +351,10 @@ export function GreenCareProvider({ children }) {
           method: 'POST',
           body: JSON.stringify(payload)
         })
+        const entry = toJournalEntry(result.data)
         setState(prev => ({
           ...prev,
-          journal: [...prev.journal, result.data]
+          journal: [...prev.journal, entry]
         }))
         // Also update activity
         const newActivity = {

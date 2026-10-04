@@ -1080,6 +1080,8 @@ a,
 }
 
 .species-card {
+  display: flex;
+  flex-direction: column;
   background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1088,6 +1090,7 @@ a,
   padding: 16px;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease;
+  overflow: hidden;
 }
 
 .species-card:hover {
@@ -1100,6 +1103,7 @@ a,
   height: 10rem;
   border-radius: 14px;
   background: var(--sage-100);
+  text-align: center;
   font-size: 26px;
   margin-bottom: 10px;
   object-fit: cover;
@@ -1467,6 +1471,11 @@ a,
   font-size: 11.5px;
 }
 
+.task-table-row .task-status{
+  display: flex;
+  gap: 15px;
+}
+
 .priority-dot {
   width: 8px;
   height: 8px;
@@ -1506,8 +1515,10 @@ a,
 }
 
 .plant-photo {
-  height: 50px;
+  height: 75px;
+  width: 75px;
   object-fit: cover;
+  border-radius: 8px;
 }
 
 .health-status-dot {

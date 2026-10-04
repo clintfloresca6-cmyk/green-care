@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TaskRow } from '../../shared/components/TaskRow.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
+import { Modal } from './Modal.jsx'
 
 const taskFilters = ['all', 'today', 'upcoming', 'overdue', 'completed']
 
@@ -13,6 +14,12 @@ export function SchedulePage() {
   const [year, setYear] = useState(now.getFullYear())
   const [selectedDate, setSelectedDate] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [modalOpen, setModalOpen] = useState(false)
+
+  // Log when tasks are fetched (i.e., when state.tasks changes)
+  useEffect(() => {
+    console.log('Tasks fetched:', state.tasks)
+  }, [state.tasks])
   const weekStart = state.settings.weekStart === 'sun' ? 0 : 1
   const weekdayNames = weekStart === 0 ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const firstDay = new Date(year, month, 1)
@@ -21,7 +28,12 @@ export function SchedulePage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const cells = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)]
   const dayTasks = selectedDate ? state.tasks.filter((task) => task.date === selectedDate) : []
-  let tasks = [...state.tasks].sort((a, b) => a.date.localeCompare(b.date))
+  let tasks = [...state.tasks].sort((a, b) => {
+  // Handle null/undefined dates - treat them as empty strings for sorting
+  const dateA = a.date || ''
+  const dateB = b.date || ''
+  return dateA.localeCompare(dateB)
+})
   if (filter !== 'all') tasks = tasks.filter((task) => computeTaskStatus(task) === filter)
 
   function changeMonth(delta) {
@@ -37,6 +49,11 @@ export function SchedulePage() {
           <h1>Care Schedule</h1>
           <p className="muted">Plan ahead and never miss a task.</p>
         </div>
+        <button className="btn btn-primary" type="button" onClick={() => {
+          setModalOpen(true)
+        }}>
+          +New Task
+        </button>
       </div>
 
       <div className="schedule-grid">
@@ -63,7 +80,7 @@ export function SchedulePage() {
         </div>
 
         <div className="card">
-          <div className="card-head"><h3>{selectedDate ? fmtDate(selectedDate) : 'Select a date'}</h3></div>
+          <div className="card-head"><h3>{selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? fmtDate(selectedDate) : 'Select a date'}</h3></div>
           <div className="task-list">
             {selectedDate ? dayTasks.length ? dayTasks.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} key={task.id} />) : <p className="muted">No tasks scheduled for this date.</p> : <p className="muted">Pick a calendar date to inspect its care tasks.</p>}
           </div>
@@ -86,15 +103,21 @@ export function SchedulePage() {
               <div className="task-table-row" key={task.id}>
                 <div>{plantById(state, task.plantId)?.name || ''}</div>
                 <div>{taskIcon(task.type)} {task.type}</div>
-                <div>{fmtDateShort(task.date)}</div>
+                <div>{task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? fmtDateShort(task.date) : 'Invalid Date'}</div>
                 <div><span className={`priority-dot priority-${task.priority}`}></span>{task.priority}</div>
-                <div><span className={`badge ${badgeClass}`}>{label(status)}</span></div>
-                <div>{task.status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task.id)}>Complete</button> : null}</div>
+                <div className='task-status'><span className={`badge ${badgeClass}`}>{label(status)}</span>{status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task.id)}>Complete</button> : null}</div>
               </div>
             )
           })}
         </div>
       </div>
+      {/* Direct modal rendering - only show if button was clicked */}
+      {modalOpen && (
+        <Modal
+          preselectPlantId={state.plants[0]?.id}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
     </section>
   )
 }
