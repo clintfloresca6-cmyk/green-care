@@ -47,3 +47,27 @@ export const listTreflePlants = asyncHandler(async (req, res) => {
     },
   });
 });
+
+/**
+ * Get a specific species by ID from Trefle API
+ * @route GET /api/trefle/species/:id
+ * @access Public
+ */
+export const getTrefleSpeciesById = asyncHandler(async (req, res) => {
+  const speciesId = req.params.id;
+
+  if (!speciesId) {
+    res.status(400).json({ error: 'Species ID is required' });
+    return;
+  }
+
+  // Try to get species from cache or fetch from Trefle
+  const speciesData = await trefleService.getOrFetchSpecies(speciesId);
+
+  if (!speciesData) {
+    res.status(404).json({ error: 'Species not found' });
+    return;
+  }
+
+  res.json({ data: speciesData });
+});

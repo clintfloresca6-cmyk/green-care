@@ -43,8 +43,14 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
     // Trefle API response structure: { data: [...], meta: { ... } }
     const { data, meta } = response.data;
 
+    // Log raw data for inspection (first 2 plants)
+    console.log('Trefle API raw data (first 2 plants):', data.slice(0, 2));
+
     // Map the data to extract required fields and handle missing data
     const plants = data.map(mapPlantToRow);
+
+    // Log processed data for inspection (first 2 plants)
+    console.log('Trefle API processed data (first 2 plants):', plants.slice(0, 2));
 
     return {
       data: plants,
@@ -57,6 +63,7 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
     };
   } catch (error) {
     // Handle axios errors
+    console.error('Error fetching from Trefle API:', error);
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -80,6 +87,8 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
  * @returns {Object} - Mapped plant data
  */
 export function mapPlantToRow(plant) {
+  const growth = plant.growth ?? plant.main_species?.growth ?? {};
+
   // Extract the main image URL from various possible locations
   let photoUrl = null;
 
@@ -119,27 +128,66 @@ export function mapPlantToRow(plant) {
     }
   }
 
-  // Determine light level based on Trefle's growth.light value
-  let lightLevel = 'medium'; // default
-  if (plant.growth && plant.growth.light) {
-    const light = plant.growth.light.toLowerCase();
-    if (light.includes('low') || light.includes('shade')) {
-      lightLevel = 'low';
-    } else if (light.includes('high') || light.includes('full sun') || light.includes('direct')) {
-      lightLevel = 'high';
+  // Map Trefle data to frontend expected values
+  // Light: map growth.light (0-10 scale) to light conditions
+  let light = '—'; // Default value
+  if (growth && growth.light !== null) {
+    const lightValue = parseFloat(growth.light);
+    if (lightValue >= 8) {
+      light = 'Full Sun';
+    } else if (lightValue >= 6) {
+      light = 'Bright Indirect';
+    } else if (lightValue >= 5) {
+      light = 'Partially shade';
+    } else if (lightValue >= 3) {
+      light = 'Medium light';
     } else {
-      lightLevel = 'medium';
+      light = 'Low light';
+    }
+  }
+
+  // Watering: map growth.soil_humidity (0-10 scale) to watering frequency
+  // Higher value = higher water need = more frequent watering
+  let watering = '—'; // Default value
+  if (growth && growth.soil_humidity !== null) {
+    const humidityValue = parseFloat(growth.soil_humidity);
+    if (humidityValue >= 8) {
+      watering = 'Every 3 days';
+    } else if (humidityValue >= 6) {
+      watering = 'Weekly';
+    } else if (humidityValue >= 4) {
+      watering = 'Every 10 days';
+    } else {
+      watering = 'Every 2 weeks';
+    }
+
+    console.log(watering, humidityValue, growth.soil_humidity);
+  }
+
+  // Fertilizing: map growth.soil_nutriments (0-10 scale) to fertilizing frequency
+  // Higher value = higher nutrient need = more frequent fertilizing
+  let fertilizing = '—'; // Default value
+  if (growth && growth.soil_nutriments !== null) {
+    const nutrimentsValue = parseFloat(growth.soil_nutriments);
+    if (nutrimentsValue >= 8) {
+      fertilizing = 'Seasonal';
+    } else if (nutrimentsValue >= 6) {
+      fertilizing = 'Every 2 Weeks';
+    } else if (nutrimentsValue >= 4) {
+      fertilizing = 'Monthly';
+    } else {
+      fertilizing = 'Every 6 Weeks';
     }
   }
 
   // Determine zone based on native distribution or growth conditions
   // Default to indoor for common houseplants, otherwise check if it mentions outdoor conditions
   let zone = 'indoor'; // default
-  if (plant.growth && (
-      plant.growth.temperature &&
-      (plant.growth.temperature.toLowerCase().includes('outdoor') ||
-       plant.growth.temperature.toLowerCase().includes('garden') ||
-       plant.growth.temperature.toLowerCase().includes('landscape'))
+  if (growth && (
+      growth.temperature &&
+      (growth.temperature.toLowerCase().includes('outdoor') ||
+       growth.temperature.toLowerCase().includes('garden') ||
+       growth.temperature.toLowerCase().includes('landscape'))
   )) {
     zone = 'outdoor';
   }
@@ -157,20 +205,16 @@ export function mapPlantToRow(plant) {
     difficulty = 'Beginner';
   }
 
-  // Watering and fertilizing defaults - in a real app these would come from species-specific data
-  const watering = 'Weekly'; // reasonable default
-  const fertilizing = 'Monthly during growing season'; // reasonable default
-
   return {
-    id: String(plant.id ?? ''),
+    id: String(plant.main_species?.id ?? plant.id ??''),
     common_name: plant.common_name ?? '',
     scientific_name: plant.scientific_name ?? '',
     difficulty,
-    light: (plant.growth && plant.growth.light) ?? 'Unknown',
+    light,
     watering,
     fertilizing,
     zone,
-    light_level: lightLevel,
+    light_level: light ? light.toLowerCase().replace(' ', '_') : 'medium',
     description: (plant.description ?? plant.bibliography ?? `${plant.year ?? ''}`.trim()) || null,
     photo_url: photoUrl,
   };
@@ -262,16 +306,203 @@ export async function getOrFetchSpecies(speciesId) {
       return cached[0];
     }
 
-    // If not in cache, fetch from Trefle
-    // Note: Trefle API doesn't have a direct endpoint to get a single plant by ID
-    // We'll need to search for it or get all plants and filter
-    // For now, we'll return null and let the caller handle it
-    // In a more complete implementation, we might search by ID or name
+    // If not in cache, try to fetch from Trefle API
+    // Approach 1: Try the plants endpoint by ID (if it exists)
+    try {
+      const response = await api.get(`/plants/${speciesId}`);
 
-    // Since we don't have the species name to search for, we can't fetch it directly
-    // This is a limitation - in a real app we might store a mapping or use a different approach
-    return null;
+      // Trefle API response structure for plant endpoint: { data: { ... } }
+      const plantData = response.data.data;
+
+      console.log(`Fetched species ${speciesId} from Trefle plants endpoint:`, plantData);
+      // Map the plant data to format expected by our application
+      const mappedPlant = mapPlantToRow(plantData);
+
+      // Cache the plant data for future use
+      await upsertSpecies(mappedPlant);
+
+      return mappedPlant;
+    } catch (plantEndpointError) {
+      // If plants endpoint by ID fails, try approach 2: search through plants list
+      console.log(`Plants endpoint by ID failed for ${speciesId}, trying search approach:`, plantEndpointError.message);
+
+      // Fetch a reasonable batch of plants to search through
+      // We'll fetch the first few pages to increase chances of finding the plant
+      const searchPageSize = 50; // Reasonable batch size
+      const maxPagesToSearch = 3; // Don't search too many pages to avoid excessive API calls
+
+      for (let page = 1; page <= maxPagesToSearch; page++) {
+        try {
+          const result = await fetchPlants({
+            page: page,
+            pageSize: searchPageSize
+          });
+
+          // Search through the fetched plants for the matching ID
+          const foundPlant = result.data.find(plant => String(plant.id) === String(speciesId));
+
+          if (foundPlant) {
+            // Map the found plant data
+            const mappedPlant = mapPlantToRow(foundPlant);
+
+            // Cache the plant data for future use
+            await upsertSpecies(mappedPlant);
+
+            return mappedPlant;
+          }
+        } catch (searchError) {
+          console.error(`Error searching page ${page} for species ${speciesId}:`, searchError);
+          // Continue to next page or give up after max pages
+          if (page === maxPagesToSearch) {
+            console.error(`Failed to find species ${speciesId} after searching ${maxPagesToSearch} pages`);
+          }
+          continue;
+        }
+      }
+
+      // If we get here, we didn't find the plant in our search
+      console.warn(`Species ${speciesId} not found in cache or after searching ${maxPagesToSearch} pages of plants`);
+      return null;
+    }
   } catch (error) {
-    throw new Error(`Failed to get or fetch species: ${error.message}`);
+    console.error(`Error fetching species ${speciesId} from Trefle:`, error);
+    // If all approaches fail, return null to let caller handle fallback
+    return null;
   }
+}
+
+/**
+ * Map Trefle species data to format expected by species table
+ * @param {Object} species - Species data from Trefle API species endpoint
+ * @returns {Object} - Mapped species data
+ */
+export function mapSpeciesToRow(species) {
+  const growth = species.growth ?? species.main_species?.growth ?? {};
+  // Extract the main image URL from various possible locations
+  let photoUrl = null;
+
+  // Try the standard images array first
+  if (species.images && Array.isArray(species.images) && species.images.length > 0) {
+    // Handle case where images array contains objects with url property
+    if (species.images[0] && typeof species.images[0] === 'object' && species.images[0].url) {
+      photoUrl = species.images[0].url;
+    }
+    // Handle case where images array contains direct URLs
+    else if (typeof species.images[0] === 'string') {
+      photoUrl = species.images[0];
+    }
+  }
+
+  // Fallback: check for thumbnail or main_image properties
+  if (!photoUrl) {
+    if (species.thumbnail && typeof species.thumbnail === 'string') {
+      photoUrl = species.thumbnail;
+    } else if (species.thumbnail && typeof species.thumbnail === 'object' && species.thumbnail.url) {
+      photoUrl = species.thumbnail.url;
+    } else if (species.main_image && typeof species.main_image === 'string') {
+      photoUrl = species.main_image;
+    } else if (species.main_image && typeof species.main_image === 'object' && species.main_image.url) {
+      photoUrl = species.main_image.url;
+    }
+  }
+
+  // Fallback: check for image_url or similar direct properties
+  if (!photoUrl) {
+    if (species.image_url && typeof species.image_url === 'string') {
+      photoUrl = species.image_url;
+    } else if (species.image && typeof species.image === 'string') {
+      photoUrl = species.image;
+    } else if (species.image && typeof species.image === 'object' && species.image.url) {
+      photoUrl = species.image.url;
+    }
+  }
+
+  // Map Trefle species data to frontend expected values using the specific fields requested
+  // Light: map growth.light (0-10 scale) to light conditions
+  let light = '—'; // Default value
+  if (growth && growth.light !== null) {
+    const lightValue = parseFloat(growth.light);
+    if (lightValue >= 8) {
+      light = 'Full Sun';
+    } else if (lightValue >= 6) {
+      light = 'Bright Indirect';
+    } else if (lightValue >= 5) {
+      light = 'Partially shade';
+    } else if (lightValue >= 3) {
+      light = 'Medium light';
+    } else {
+      light = 'Low light';
+    }
+  }
+
+  // Watering: map growth.soil_humidity (0-10 scale) to watering frequency
+  // Higher value = higher water need = more frequent watering
+  let watering = '—'; // Default value
+  if (growth && growth.soil_humidity !== null) {
+    const humidityValue = parseFloat(growth.soil_humidity);
+    if (humidityValue >= 8) {
+      watering = 'Every 3 days';
+    } else if (humidityValue >= 6) {
+      watering = 'Weekly';
+    } else if (humidityValue >= 4) {
+      watering = 'Every 10 days';
+    } else {
+      watering = 'Every 2 weeks';
+    }
+  }
+
+  // Fertilizing: map growth.soil_nutriments (0-10 scale) to fertilizing frequency
+  // Higher value = higher nutrient need = more frequent fertilizing
+  let fertilizing = '—'; // Default value
+  if (growth && growth.soil_nutriments !== null) {
+    const nutrimentsValue = parseFloat(growth.soil_nutriments);
+    if (nutrimentsValue >= 8) {
+      fertilizing = 'Seasonal';
+    } else if (nutrimentsValue >= 6) {
+      fertilizing = 'Every 2 Weeks';
+    } else if (nutrimentsValue >= 4) {
+      fertilizing = 'Monthly';
+    } else {
+      fertilizing = 'Every 6 Weeks';
+    }
+  }
+
+  // Determine zone based on native distribution or growth conditions
+  // Default to indoor for common houseplants, otherwise check if it mentions outdoor conditions
+  let zone = 'indoor'; // default
+  if (growth && (
+      growth.temperature &&
+      (growth.temperature.toLowerCase().includes('outdoor') ||
+       growth.temperature.toLowerCase().includes('garden') ||
+       growth.temperature.toLowerCase().includes('landscape'))
+  )) {
+    zone = 'outdoor';
+  }
+
+  // Set difficulty - Trefle doesn't provide this, so we'll default based on common characteristics
+  // In a real app, this might come from user data or a separate classification system
+  let difficulty = 'Beginner'; // default
+  // Some plants are known to be more difficult - this is a simplified heuristic
+  const difficultPlants = ['orchid', 'fern', 'bonsai', 'cactus', 'succulent'];
+  const commonNameLower = (species.common_name || '').toLowerCase();
+  if (difficultPlants.some(difficultPlant => commonNameLower.includes(difficultPlant))) {
+    difficulty = 'Advanced';
+  } else if (commonNameLower.includes('ivy') || commonNameLower.includes('philodendron') ||
+             commonNameLower.includes('pothos') || commonNameLower.includes('spider plant')) {
+    difficulty = 'Beginner';
+  }
+
+  return {
+    id: String(species.id ?? ''),
+    common_name: species.common_name ?? '',
+    scientific_name: species.scientific_name ?? '',
+    difficulty,
+    light,
+    watering,
+    fertilizing,
+    zone,
+    light_level: light ? light.toLowerCase().replace(' ', '_') : 'medium',
+    description: (species.description ?? species.bibliography ?? `${species.year ?? ''}`.trim()) || null,
+    photo_url: photoUrl,
+  };
 }
