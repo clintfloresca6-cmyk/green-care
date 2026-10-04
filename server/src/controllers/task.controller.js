@@ -23,17 +23,13 @@ export const get = asyncHandler(async (req, res) => {
 })
 
 export const update = asyncHandler(async (req, res) => {
-  // For simplicity, we'll reuse the create service function
-  // In a real app, you'd have an updateForUser function in the service
-  const task = await tasksService.createForUser(req.user.id, req.body)
-  // Note: This doesn't actually update the existing task, it creates a new one
-  // A proper implementation would update the existing task with req.params.id
+  const task = await tasksService.updateForUser(req.user.id, req.params.id, req.body)
   res.json({ data: task })
 })
 
 export const archive = asyncHandler(async (req, res) => {
   const [result] = await pool.query(
-    'UPDATE tasks SET status = \'archived\' WHERE id = ? AND user_id = ?',
+    'DELETE FROM tasks WHERE id = ? AND user_id = ?',
     [req.params.id, req.user.id]
   )
 

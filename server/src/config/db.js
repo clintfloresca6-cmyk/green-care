@@ -11,4 +11,5 @@ export const pool = mysql.createPool({
   connectionLimit: 10,
   charset: 'utf8mb4',
   timezone: 'Z',
+  dateStrings:['DATE'],
 })

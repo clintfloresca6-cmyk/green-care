@@ -45,7 +45,7 @@ export async function updateForUser(userId, plantId, patch) {
   const fields = []
   const values = []
   const allowed = ['name', 'species_name', 'location', 'zone', 'light',
-    'watering', 'fertilizing', 'health', 'notes', 'photo']
+    'watering', 'fertilizing', 'health', 'notes', 'photo_url']
   for (const key of allowed) {
     if (patch[key] !== undefined) {
       fields.push(`${key} = ?`)

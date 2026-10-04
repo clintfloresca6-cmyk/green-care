@@ -62,3 +62,65 @@ export async function completeForUser(userId, taskId) {
   const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [taskId])
   return rows[0]
 }
+
+export async function updateForUser(userId, taskId, payload) {
+  // Verify the task belongs to the user and get the current task
+  const [currentTask] = await pool.query(
+    'SELECT * FROM tasks WHERE id = ? AND user_id = ?',
+    [taskId, userId]
+  )
+  if (!currentTask.length) throw new ApiError(404, 'Task not found')
+
+  // Verify the plant belongs to the user if plant_id is being updated
+  if (payload.plant_id !== undefined) {
+    const [owned] = await pool.query(
+      'SELECT id FROM plants WHERE id = ? AND user_id = ? AND archived_at IS NULL',
+      [payload.plant_id, userId]
+    )
+    if (!owned.length) throw new ApiError(404, 'Plant not found')
+  }
+
+  // Build update query dynamically based on provided fields
+  const fields = []
+  const values = []
+
+  if (payload.plant_id !== undefined) {
+    fields.push('plant_id = ?')
+    values.push(payload.plant_id)
+  }
+  if (payload.type !== undefined) {
+    fields.push('type = ?')
+    values.push(payload.type)
+  }
+  if (payload.task_date !== undefined) {
+    fields.push('task_date = ?')
+    values.push(payload.task_date)
+  }
+  if (payload.task_time !== undefined) {
+    fields.push('task_time = ?')
+    values.push(payload.task_time)
+  }
+  if (payload.status !== undefined) {
+    fields.push('status = ?')
+    values.push(payload.status)
+  }
+  if (payload.priority !== undefined) {
+    fields.push('priority = ?')
+    values.push(payload.priority)
+  }
+
+  if (fields.length === 0) {
+    // No fields to update, return current task
+    return currentTask[0]
+  }
+
+  values.push(taskId, userId)
+
+  await pool.query(
+    `UPDATE tasks SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    values
+  )
+
+  const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [taskId])
+  return rows[0]
+}
