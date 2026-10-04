@@ -27,3 +27,4 @@ prototype
 client.rar
 *.env
 cls
+*retrieve-data.json
