@@ -214,7 +214,7 @@ CREATE TABLE tasks (
   task_time    VARCHAR(20)  NOT NULL DEFAULT 'Anytime',   -- '8:00 AM' | 'Anytime'
   status       ENUM('pending','completed','overdue') NOT NULL DEFAULT 'pending',
   priority     ENUM('low','medium','high')           NOT NULL DEFAULT 'medium',
-  completed_at DATETIME     NULL,
+  is_repeating INT     NULL,
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

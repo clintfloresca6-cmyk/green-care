@@ -30,10 +30,13 @@ export async function createForUser(userId, payload) {
   )
   if (!owned.length) throw new ApiError(404, 'Plant not found')
 
+  // Convert 0 to null for storage (0 means no repeat)
+  const isRepeating = payload.is_repeating > 0 ? payload.is_repeating : null
+
   await pool.query(
     `INSERT INTO tasks
-       (id, user_id, plant_id, type, task_date, task_time, status, priority)
-     VALUES (?,?,?,?,?,?,?,?)`,
+       (id, user_id, plant_id, type, task_date, task_time, status, priority, is_repeating)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
     [
       id,
       userId,
@@ -43,6 +46,7 @@ export async function createForUser(userId, payload) {
       payload.task_time ?? 'Anytime',
       payload.status ?? 'pending',
       payload.priority ?? 'medium',
+      isRepeating,
     ],
   )
 
@@ -51,16 +55,52 @@ export async function createForUser(userId, payload) {
 }
 
 export async function completeForUser(userId, taskId) {
+  // First, get the current task to check if it's repeating
+  const [currentTask] = await pool.query(
+    'SELECT * FROM tasks WHERE id = ? AND user_id = ?',
+    [taskId, userId]
+  );
+  if (!currentTask.length) throw new ApiError(404, 'Task not found');
+
+  // Mark the current task as completed
   const [result] = await pool.query(
     `UPDATE tasks
         SET status = 'completed', completed_at = NOW()
       WHERE id = ? AND user_id = ?`,
-    [taskId, userId],
-  )
-  if (!result.affectedRows) throw new ApiError(404, 'Task not found')
+    [taskId, userId]
+  );
+  if (!result.affectedRows) throw new ApiError(404, 'Task not found');
 
-  const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [taskId])
-  return rows[0]
+  // If the task is repeating, create a new task
+  if (currentTask[0].is_repeating && currentTask[0].is_repeating > 0) {
+    // Calculate the next task date
+    const taskDate = new Date(currentTask[0].task_date); // task_date is a string in YYYY-MM-DD
+    taskDate.setDate(taskDate.getDate() + currentTask[0].is_repeating);
+    const nextTaskDate = taskDate.toISOString().split('T')[0];
+
+    // Create a new task with the same properties, but new date and pending status
+    const newTaskId = randomUUID().replace(/-/g, '').slice(0, 26);
+    await pool.query(
+      `INSERT INTO tasks
+         (id, user_id, plant_id, type, task_date, task_time, status, priority, is_repeating)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        newTaskId,
+        userId,
+        currentTask[0].plant_id,
+        currentTask[0].type,
+        nextTaskDate,
+        currentTask[0].task_time,
+        'pending', // status
+        currentTask[0].priority,
+        currentTask[0].is_repeating // same repeat interval
+      ]
+    );
+  }
+
+  // Return the updated current task
+  const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
+  return rows[0];
 }
 
 export async function updateForUser(userId, taskId, payload) {
@@ -108,6 +148,12 @@ export async function updateForUser(userId, taskId, payload) {
     fields.push('priority = ?')
     values.push(payload.priority)
   }
+  if (payload.is_repeating !== undefined) {
+    fields.push('is_repeating = ?')
+    // Convert 0 to null for storage (0 means no repeat)
+    const isRepeating = payload.is_repeating > 0 ? payload.is_repeating : null
+    values.push(isRepeating)
+  }
 
   if (fields.length === 0) {
     // No fields to update, return current task
@@ -124,3 +170,4 @@ export async function updateForUser(userId, taskId, payload) {
   const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [taskId])
   return rows[0]
 }
+

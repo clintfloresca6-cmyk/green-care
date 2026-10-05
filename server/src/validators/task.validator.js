@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 const taskType = z.enum(['Water', 'Fertilize', 'Prune', 'Repot', 'Clean', 'Check', 'Rotate'])
 const priority = z.enum(['low', 'medium', 'high'])
+const repeatDays = z.coerce.number().int().min(0).max(3650).optional()
 
 export const createTaskSchema = z.object({
   plant_id: z.string().min(1).max(26),
@@ -10,6 +11,7 @@ export const createTaskSchema = z.object({
   task_time: z.string().max(20).optional(),
   status: z.enum(['pending', 'completed', 'skipped', 'overdue']).optional(),
   priority: priority.optional(),
+  is_repeating: repeatDays,
 })
 
 export const updateTaskSchema = z.object({
