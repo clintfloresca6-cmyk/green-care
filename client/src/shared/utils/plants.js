@@ -1,4 +1,12 @@
 import { daysBetween, todayISO } from './date.js'
+import waterCanIcon from '../../assets/water.svg'
+import fertilizeIcon from '../../assets/fertilize.svg'
+import pruneIcon from '../../assets/scissor.svg'
+import repotIcon from '../../assets/repot.svg'
+import cleanIcon from '../../assets/clean.svg'
+import healthIcon from '../../assets/stethoscope.svg'
+import otherIcon from '../../assets/other.svg'
+import rotateIcon from '../../assets/rotate.svg'
 
 const PLANT_EMOJI = {
   'Monstera Deliciosa': '🌿',
@@ -37,25 +45,25 @@ export function statusDotClass(health) {
 
 export function taskIcon(type) {
   return {
-    Water: '💧',
-    Fertilize: '🌿',
-    Prune: '✂',
-    Repot: '🪴',
-    Check: '🔍',
-    Rotate: '🔄',
-  }[type] || '🪴'
+    Water: waterCanIcon,
+    Fertilize: fertilizeIcon,
+    Prune: pruneIcon,
+    Repot: repotIcon,
+    Check: healthIcon,
+    Rotate: rotateIcon,
+  }[type] || repotIcon
 }
 
 export function activityIcon(activity) {
   return {
-    Watered: '💧',
-    Fertilized: '🌿',
-    Pruned: '✂',
-    Repotted: '🪴',
-    Cleaned: '🧼',
-    'Checked Health': '🩺',
-    Other: '📝',
-  }[activity] || '📝'
+    Watered: waterCanIcon,
+    Fertilized: fertilizeIcon,
+    Pruned: pruneIcon,
+    Repotted: repotIcon,
+    Cleaned: cleanIcon,
+    'Checked Health': healthIcon,
+    Other: otherIcon,
+  }[activity] || otherIcon
 }
 
 export function computeTaskStatus(task) {

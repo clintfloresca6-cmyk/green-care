@@ -40,7 +40,7 @@ export function JournalPage() {
           const plant = state.plants.find((item) => item.id === entry.plantId)
           return (
             <div className="journal-entry" key={entry.id}>
-              <div className="journal-icon">{activityIcon(entry.activity)}</div>
+              <div className="journal-icon"><img src={activityIcon(entry.activity)}/></div>
               <div>
                 <div className="journal-date">{fmtDate(entry.date) || 'Date not available'}</div>
                 <div className="journal-title">{entry.activity} {plant?.name || '(archived plant)'}</div>

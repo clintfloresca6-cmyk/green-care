@@ -7,14 +7,32 @@ export function Modal({ preselectPlantId, onClose }) {
     function submit(event) {
         event.preventDefault()
         const formData = Object.fromEntries(new FormData(event.currentTarget))
+        const repeatInterval = formData.repeatInterval
+        const repeatUnit = formData.repeatUnit
+        let repeatDays = 0
+        if (repeatInterval) {
+            const intervalNum = parseInt(repeatInterval, 10)
+            if (!isNaN(intervalNum) && intervalNum > 0) {
+                if (repeatUnit === 'days') {
+                    repeatDays = intervalNum
+                } else if (repeatUnit === 'weeks') {
+                    repeatDays = intervalNum * 7
+                } else if (repeatUnit === 'months') {
+                    repeatDays = intervalNum * 30
+                }
+            }
+        }
         const payload = {
           plant_id: formData.plantId,
           type: formData.type,
           task_date: formData.date,
           task_time: formData.time || undefined,
           priority: formData.priority || undefined,
-          status: formData.status || undefined
+          status: formData.status || undefined,
+          is_repeating: repeatDays
         }
+
+        console.log('Submitting new task with payload:', payload)
         actions.createTask(payload)
         if (onClose) onClose()
     }
@@ -61,16 +79,16 @@ export function Modal({ preselectPlantId, onClose }) {
                         </div>
                         <div className="form-row">
                             <label>Priority</label>
-                            <select name="priority">
+                            <select name="priority" defaultValue="medium">
                                 <option value="low">Low</option>
-                                <option value="medium" selected>Medium</option>
+                                <option value="medium">Medium</option>
                                 <option value="high">High</option>
                             </select>
                         </div>
                         <div className="form-row">
                             <label>Status</label>
-                            <select name="status">
-                                <option value="pending" selected>Pending</option>
+                            <select name="status" defaultValue="pending">
+                                <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
                                 <option value="skipped">Skipped</option>
                                 <option value="overdue">Overdue</option>
@@ -80,6 +98,17 @@ export function Modal({ preselectPlantId, onClose }) {
                     <div className="form-row">
                         <label>Notes</label>
                         <textarea name="notes" rows="3" placeholder="Any additional notes?"></textarea>
+                    </div>
+                    <div className="form-row">
+                        <label>Repeat</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input type="number" name="repeatInterval" min="0" placeholder="Every (0 to disable)" style={{ width: '80px' }} />
+                            <select name="repeatUnit" defaultValue="days" style={{ width: '100px' }}>
+                                <option value="days">Days</option>
+                                <option value="weeks">Weeks</option>
+                                <option value="months">Months</option>
+                            </select>
+                        </div>
                     </div>
                     <div className="modal-actions">
                         <button className="btn btn-secondary" type="button" onClick={() => {

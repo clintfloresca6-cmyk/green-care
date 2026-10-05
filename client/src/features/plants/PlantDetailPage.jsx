@@ -1,7 +1,7 @@
 import { goTo } from '../../app/routes.js'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
-import { daysBetween, fmtDate, todayISO } from '../../shared/utils/date.js'
-import { emojiFor, healthClass } from '../../shared/utils/plants.js'
+import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
+import { emojiFor, healthClass, computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from './Modal.jsx'
 import { useState } from 'react'
 
@@ -19,26 +19,43 @@ export function PlantDetailPage({ plantId }) {
     )
   }
 
-  // Calculate days until next task and progress if nextTask exists
-  const nextTask = plant.nextTask
+  // Calculate days until next task and progress from tasks
+  const today = todayISO()
+  const upcomingTasks = state.tasks
+    .filter(task => task.plantId === plant.id && task.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const nextTask = upcomingTasks[0] || null
   let daysUntilCare = 0
   let progress = 0
   let nextTaskType = ''
   if (nextTask) {
-    daysUntilCare = daysBetween(todayISO(), nextTask.date)
+    daysUntilCare = daysBetween(today, nextTask.date)
     progress = Math.max(4, Math.min(100, 100 - daysUntilCare * 20))
     nextTaskType = nextTask.type
   }
+  // Get all tasks for this plant, sorted by date and time
+  const plantTasks = state.tasks
+    .filter(task => task.plantId === plant.id)
+    .sort((a, b) => {
+      // Sort by date first, then by time (treating 'Anytime' as latest)
+      const dateDiff = a.date.localeCompare(b.date);
+      if (dateDiff !== 0) return dateDiff;
+      // Handle time: 'Anytime' should be considered later than specific times
+      if (a.time === 'Anytime') return 1;
+      if (b.time === 'Anytime') return -1;
+      return a.time.localeCompare(b.time);
+    })
+
   const notes = state.journal.filter((entry) => entry.plantId === plant.id).sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <section className="page active">
       <button className="back-link" type="button" onClick={() => goTo('plants')}>← Back to My Plants</button>
       <div className="detail-header">
-        <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.species)}</div>
+        <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.species_name)}</div>
         <div className="detail-info">
           <h1>{plant.name}</h1>
-          <p className="muted">{plant.species} · 📍 {plant.location}</p>
+          <p className="muted">{plant.species_name} · 📍 {plant.location}</p>
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
             <button className="btn btn-primary btn-sm" type="button" onClick={() => actions.quickCare(plant.id, 'Water')}>Water Plant</button>
@@ -88,11 +105,13 @@ export function PlantDetailPage({ plantId }) {
         {nextTask ? (
           <div className="card">
             <div className="card-head"><h3>Next Care</h3></div>
+            <div className="task-info">
             <p style={{ fontSize: 14, marginBottom: 6 }}>
               {daysUntilCare < 0 ? <strong style={{ color: 'var(--brick-500)' }}>{nextTaskType} overdue</strong> : daysUntilCare === 0 ? <strong>{nextTaskType} due today</strong> : `${nextTaskType} in ${daysUntilCare} day${daysUntilCare === 1 ? '' : 's'}`}
             </p>
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }}></div></div>
             <p className="muted" style={{ marginTop: 10, fontSize: 12.5 }}>Last watered {fmtDate(plant.lastWatered)}</p>
+          </div>
           </div>
         ) : (
           <div className="card">

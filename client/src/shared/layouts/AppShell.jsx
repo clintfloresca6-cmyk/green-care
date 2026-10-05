@@ -3,6 +3,8 @@ import { goTo, navItems } from '../../app/routes.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
+import notificationIcon from '../../assets/bell1.svg'
+import settingsIcon from '../../assets/gear.svg'
 
 export function AppShell({ page, children }) {
   const { state, actions, unreadCount } = useGreenCare()
@@ -74,7 +76,7 @@ export function AppShell({ page, children }) {
                   setSidebarOpen(false)
                 }}
               >
-                <span className="nav-icon" data-icon={item.icon}></span>
+                <img className="nav-icon" src={item.icon} alt={item.label} />
                 {item.label}
                 {item.page === 'notifications' && unreadCount > 0 ? <span className="nav-badge">{unreadCount}</span> : null}
               </button>
@@ -83,7 +85,8 @@ export function AppShell({ page, children }) {
 
           <div className="sidebar-footer">
             <button className={page === 'settings' ? 'nav-item active' : 'nav-item'} type="button" onClick={() => goTo('settings')}>
-              <span className="nav-icon" data-icon="settings"></span> Settings
+              <img className="nav-icon" src={settingsIcon} alt="Settings" />
+              Settings
             </button>
             <button className="sidebar-profile" type="button" onClick={() => goTo('profile')}>
               <Avatar name={displayName} photo={displayPhoto} />
@@ -120,7 +123,7 @@ export function AppShell({ page, children }) {
                     setNotifOpen((open) => !open)
                   }}
                 >
-                  <span data-icon="bell"></span>
+                  <img src={notificationIcon} alt="Notifications" />
                   {unreadCount > 0 ? <span className="dot-badge"></span> : null}
                 </button>
                 {notifOpen ? <NotificationPanel close={() => setNotifOpen(false)} /> : null}

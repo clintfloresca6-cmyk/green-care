@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { TaskRow } from '../../shared/components/TaskRow.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
@@ -10,16 +10,43 @@ const taskFilters = ['all', 'today', 'upcoming', 'overdue', 'completed']
 export function SchedulePage() {
   const { state, actions } = useGreenCare()
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth())
-  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(() => now.getMonth())
+  const [year, setYear] = useState(() => now.getFullYear())
   const [selectedDate, setSelectedDate] = useState(null)
   const [filter, setFilter] = useState('all')
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
 
   // Log when tasks are fetched (i.e., when state.tasks changes)
   useEffect(() => {
-    console.log('Tasks fetched:', state.tasks)
   }, [state.tasks])
+
+  // Memoize tasks grouped by date for O(1) lookup
+  const tasksByDate = useMemo(() => {
+    const map = new Map()
+    state.tasks.forEach(task => {
+      if (!task.date) return
+      const dateKey = task.date
+      if (!map.has(dateKey)) {
+        map.set(dateKey, [])
+      }
+      map.get(dateKey).push(task)
+    })
+    return map
+  }, [state.tasks])
+
+  // Memoize sorted and filtered tasks for Upcoming Tasks table
+  const filteredTasks = useMemo(() => {
+    let tasks = [...state.tasks].sort((a, b) => {
+      // Handle null/undefined dates - treat them as empty strings for sorting
+      const dateA = a.date || ''
+      const dateB = b.date || ''
+      return dateA.localeCompare(dateB)
+    })
+    if (filter !== 'all') tasks = tasks.filter((task) => computeTaskStatus(task) === filter)
+    return tasks
+  }, [state.tasks, filter])
+
   const weekStart = state.settings.weekStart === 'sun' ? 0 : 1
   const weekdayNames = weekStart === 0 ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const firstDay = new Date(year, month, 1)
@@ -27,19 +54,28 @@ export function SchedulePage() {
   if (startOffset < 0) startOffset += 7
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const cells = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)]
-  const dayTasks = selectedDate ? state.tasks.filter((task) => task.date === selectedDate) : []
-  let tasks = [...state.tasks].sort((a, b) => {
-  // Handle null/undefined dates - treat them as empty strings for sorting
-  const dateA = a.date || ''
-  const dateB = b.date || ''
-  return dateA.localeCompare(dateB)
-})
-  if (filter !== 'all') tasks = tasks.filter((task) => computeTaskStatus(task) === filter)
+  const dayTasks = selectedDate ? tasksByDate.get(selectedDate) || [] : []
 
   function changeMonth(delta) {
     const next = new Date(year, month + delta, 1)
     setMonth(next.getMonth())
     setYear(next.getFullYear())
+  }
+
+  function openNewTask() {
+    setEditingTask(null)
+    setModalOpen(true)
+  }
+
+  function openEditTask(task) {
+    setEditingTask(task)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingTask(null)
+    actions.closeModal()
   }
 
   return (
@@ -49,9 +85,7 @@ export function SchedulePage() {
           <h1>Care Schedule</h1>
           <p className="muted">Plan ahead and never miss a task.</p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => {
-          setModalOpen(true)
-        }}>
+        <button className="btn btn-primary" type="button" onClick={openNewTask}>
           +New Task
         </button>
       </div>
@@ -68,11 +102,15 @@ export function SchedulePage() {
             {cells.map((day, index) => {
               if (!day) return <div className="cal-cell empty" key={`empty-${index}`}></div>
               const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const tasksForDay = state.tasks.filter((task) => task.date === iso)
+              const tasksForDay = tasksByDate.get(iso) || []
               return (
                 <button className={`cal-cell ${iso === todayISO() ? 'today' : ''} ${iso === selectedDate ? 'selected' : ''}`} type="button" key={iso} onClick={() => setSelectedDate(iso)}>
                   <span className="cal-num">{day}</span>
-                  <span className="cal-tasks">{tasksForDay.slice(0, 4).map((task) => taskIcon(task.type)).join('')}</span>
+                  <span className="cal-tasks">
+                    {tasksForDay.slice(0, 4).map((task) => (
+                      <img key={task.id} src={taskIcon(task.type)} alt="" className="cal-task-icon" />
+                    ))}
+                  </span>
                 </button>
               )
             })}
@@ -82,7 +120,7 @@ export function SchedulePage() {
         <div className="card">
           <div className="card-head"><h3>{selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? fmtDate(selectedDate) : 'Select a date'}</h3></div>
           <div className="task-list">
-            {selectedDate ? dayTasks.length ? dayTasks.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} key={task.id} />) : <p className="muted">No tasks scheduled for this date.</p> : <p className="muted">Pick a calendar date to inspect its care tasks.</p>}
+            {selectedDate ? dayTasks.length ? dayTasks.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} onEdit={openEditTask} key={task.id} />) : <p className="muted">No tasks scheduled for this date.</p> : <p className="muted">Pick a calendar date to inspect its care tasks.</p>}
           </div>
         </div>
       </div>
@@ -96,16 +134,32 @@ export function SchedulePage() {
         </div>
         <div className="task-table">
           <div className="task-table-row head"><div>Plant</div><div>Task</div><div>Date</div><div>Priority</div><div>Status</div><div></div></div>
-          {tasks.map((task) => {
+          {filteredTasks.map((task) => {
             const status = computeTaskStatus(task)
             const badgeClass = status === 'overdue' ? 'badge-overdue' : status === 'today' ? 'badge-today' : status === 'completed' ? 'badge-done' : 'badge-upcoming'
+
+            // Repeat chip logic
+            const repeatChip = () => {
+              if (Number.isFinite(task.repeat_interval) && task.repeat_interval > 0 && task.repeat_unit) {
+                const unitLabel = task.repeat_interval === 1 ?
+                  task.repeat_unit.slice(0, -1) : // singular (remove 's')
+                  task.repeat_unit; // plural
+                return `↻ every ${task.repeat_interval} ${unitLabel}`;
+              }
+              return null;
+            };
+
             return (
               <div className="task-table-row" key={task.id}>
                 <div>{plantById(state, task.plantId)?.name || ''}</div>
-                <div>{taskIcon(task.type)} {task.type}</div>
+                <div className="t-task">{<img src={taskIcon(task.type)} alt="" className="t-task-icon" />} {task.type}</div>
                 <div>{task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? fmtDateShort(task.date) : 'Invalid Date'}</div>
                 <div><span className={`priority-dot priority-${task.priority}`}></span>{task.priority}</div>
-                <div className='task-status'><span className={`badge ${badgeClass}`}>{label(status)}</span>{status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task.id)}>Complete</button> : null}</div>
+                <div className='task-status'>
+                  <span className={`badge ${badgeClass}`}>{label(status)}</span>
+                  {status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task.id)}>Complete</button> : null}
+                  {repeatChip() && <span className="repeat-chip"> {repeatChip()}</span>}
+                </div>
               </div>
             )
           })}
@@ -114,8 +168,9 @@ export function SchedulePage() {
       {/* Direct modal rendering - only show if button was clicked */}
       {modalOpen && (
         <Modal
-          preselectPlantId={state.plants[0]?.id}
-          onClose={() => setModalOpen(false)}
+          task={editingTask}
+          onClose={closeModal}
+          preselectPlantId={!editingTask ? (state.plants[0]?.id) : undefined}
         />
       )}
     </section>

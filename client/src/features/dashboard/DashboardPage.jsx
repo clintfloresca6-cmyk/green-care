@@ -34,7 +34,6 @@ export function DashboardPage() {
       <div className="stat-grid">
         {stats.map((stat) => (
           <div className="stat-card" key={stat.label}>
-            <div className="stat-top"><span className="stat-icon" style={{ background: stat.bg }}>{stat.icon}</span></div>
             <span className="stat-value">{stat.value}</span>
             <span className="stat-label">{stat.label}</span>
           </div>
@@ -88,7 +87,7 @@ export function DashboardPage() {
               return (
                 <div className="upcoming-row" key={task.id}>
                   <span className="upcoming-date">{fmtDateShort(task.date)}</span>
-                  <span style={{ fontSize: 18 }}>{taskIcon(task.type)}</span>
+                  <img className="upcoming-icon" src={taskIcon(task.type)} alt={task.type} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 13.5 }}>{task.type} {plant?.name || ''}</div>
                     <div className="muted" style={{ fontSize: 12 }}>{task.time}</div>
@@ -106,7 +105,7 @@ export function DashboardPage() {
 function greetingText(name) {
   const hour = new Date().getHours()
   const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
-  return `Good ${period}, ${name.split(' ')[0]} 🌱`
+  return `Good ${period}, ${name.split(' ')[0]}`
 }
 
 function plantById(state, id) {

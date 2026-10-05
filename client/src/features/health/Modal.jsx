@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
+import { todayISO } from '../../shared/utils/date.js'
 
 export function Modal({ preselectPlantId, onClose }) {
     const { state, actions } = useGreenCare()
@@ -17,6 +18,20 @@ export function Modal({ preselectPlantId, onClose }) {
           health: healthStatus,
           notes: observationNote // Assuming we want to save observation note to plant's notes field
         })
+        try {
+            const plantId = preselectPlantId
+            const journalPayload = {
+                plant_id: plantId,
+                entry_date: todayISO(),
+                activity: "Checked Health",
+                notes: observationNote || `Health updated to ${healthStatus}`
+            }
+            actions.createJournalEntry(journalPayload)
+            console.log('Journal entry created for health check:', journalPayload)
+        } catch (journalError) {
+            console.error('Failed to create journal entry:', journalError)
+            // Don't throw - we still want the health update to succeed even if journal fails
+        }
         // Optionally show a toast
         actions.toast(`Health updated to ${healthStatus}`)
         if (onClose) onClose()

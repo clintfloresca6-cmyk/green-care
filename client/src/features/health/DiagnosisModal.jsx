@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
+import { todayISO } from '../../shared/utils/date.js'
 
 export function DiagnosisModal({ preselectPlantId, onClose }) {
     const { state, actions } = useGreenCare()
@@ -80,6 +81,19 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
             health: result,
             photo: photo // photo is the data URL from the upload
         })
+        // Create journal entry for health check
+        try {
+            const journalPayload = {
+                plant_id: selectedPlantId,
+                entry_date: todayISO(),
+                activity: "Checked Health",
+                notes: `Health updated to ${result} via AI diagnosis`
+            }
+            actions.createJournalEntry(journalPayload)
+        } catch (journalError) {
+            console.error('Failed to create journal entry:', journalError)
+            // Don't throw - we still want the health update to succeed even if journal fails
+        }
         // Show a toast
         actions.toast(`Health updated to ${result}`)
         // Close the modal

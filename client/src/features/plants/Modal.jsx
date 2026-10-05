@@ -36,7 +36,7 @@ export function Modal({ preselectPlantId, onClose }) {
                         <div className="form-row">
                             <label>Plant *</label>
                             <select name="plantId" required defaultValue={preselectPlantId || state.plants[0]?.id}>
-                                {state.plants.map((plant) => <option value={plant.id} key={plant.id}>{plant.name} - {plant.species}</option>)}
+                                {state.plants.map((plant) => <option value={plant.id} key={plant.id}>{plant.name} - {plant.species_name}</option>)}
                             </select>
                         </div>
                         <div className="form-row">

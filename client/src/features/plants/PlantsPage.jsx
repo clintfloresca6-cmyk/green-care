@@ -53,7 +53,7 @@ export function PlantsPage() {
   if (filter === 'attention') plants = plants.filter((plant) => plant.health === 'Needs Attention' || plant.health === 'Critical')
   if (filter === 'indoor') plants = plants.filter((plant) => plant.zone === 'indoor')
   if (filter === 'outdoor') plants = plants.filter((plant) => plant.zone === 'outdoor')
-  if (query) plants = plants.filter((plant) => [plant.name, plant.species, plant.location].some((value) => value.toLowerCase().includes(query)))
+  if (query) plants = plants.filter((plant) => [plant.name, plant.species_name, plant.location].some((value) => value.toLowerCase().includes(query)))
 
   return (
     <section className="page active">
@@ -82,7 +82,7 @@ export function PlantsPage() {
           {plants.map((plant) => (
             <button className="plant-card" type="button" key={plant.id} onClick={() => goTo('plants', plant.id)}>
               <div className="plant-thumb" style={{ background: 'var(--sage-100)' }}>
-                {plant.photo_url ? <img src={plant.photo_url} alt={plant.name || 'Plant'} /> : emojiFor(plant.species || '')}
+                {plant.photo_url ? <img src={plant.photo_url} alt={plant.name || 'Plant'} /> : emojiFor(plant.species_name || '')}
               </div>
               <div className="plant-card-body">
                 <div className="plant-card-top">
@@ -91,16 +91,23 @@ export function PlantsPage() {
                     {plant.health || 'Good'}
                   </span>
                 </div>
-                <span className="plant-species">{plant.species || 'Unknown Species'}</span>
+                <span className="plant-species">{plant.species_name || 'Unknown Species'}</span>
                 <div className="plant-meta">
                   <span>📍 {plant.location || 'Unknown location'}</span>
                   <span>
-                    {plant.nextTask ? (
-                      <>
-                        {taskIcon(plant.nextTask.type || 'Check')} Next: {plant.nextTask.type || 'Check'} ·
-                        {fmtDateShort(plant.nextTask.date || todayISO())}
-                      </>
-                    ) : 'No upcoming tasks'}
+                    {(() => {
+                      const today = todayISO()
+                      const upcomingTasks = state.tasks
+                        .filter(task => task.plantId === plant.id && task.date >= today)
+                        .sort((a, b) => a.date.localeCompare(b.date))
+                      const nextTask = upcomingTasks[0]
+                      return nextTask ? (
+                        <>
+                          {taskIcon(nextTask.type || 'Check')} Next: {nextTask.type || 'Check'} ·
+                          {fmtDateShort(nextTask.date || todayISO())}
+                        </>
+                      ) : 'No upcoming tasks'
+                    })()}
                   </span>
                   <span>
                     💧 Last watered: {plant.lastWatered ? fmtDateShort(plant.lastWatered) : 'Never'}
