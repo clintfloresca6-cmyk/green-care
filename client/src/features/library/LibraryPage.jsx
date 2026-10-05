@@ -21,19 +21,33 @@ export function LibraryPage() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/trefle/plants?page=${Math.floor(offset / 10) + 1}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        })
+        let data
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch Trefle plants: ${response.status}`)
+        // If we have a search query, use the search endpoint via GreenCareContext
+        if (search.trim() !== '') {
+          const searchResult = await actions.searchTreflePlants({
+            page: Math.floor(offset / 10) + 1,
+            perPage: 10,
+            query: search
+          })
+          data = { data: searchResult }
+        } else {
+          // Otherwise, use the browse endpoint
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/trefle/plants?page=${Math.floor(offset / 10) + 1}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch Trefle plants: ${response.status}`)
+          }
+
+          data = await response.json()
         }
 
-        const data = await response.json()
         const newPlants = data.data || []
 
         // If we're at the beginning (offset 0), replace the list; otherwise, append
@@ -44,7 +58,8 @@ export function LibraryPage() {
         }
 
         // Check if there are more plants to load
-        setHasMore(newPlants.length >= 10) // Assuming 10 per page
+        // For search results, we assume 10 per page unless we get less than 10 back
+        setHasMore(newPlants.length >= 10)
       } catch (err) {
         setError(err.message)
         setTreflePlants([])
@@ -63,9 +78,8 @@ export function LibraryPage() {
     setHasMore(true)
   }, [search])
 
-  // Filter and search plants
+  // Use plants directly from API (already filtered if in search mode)
   let plants = [...treflePlants]
-  if (search) plants = plants.filter((item) => item.common_name.toLowerCase().includes(search) || item.scientific_name.toLowerCase().includes(search))
 
   return (
     <section className="page active" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -83,6 +97,7 @@ export function LibraryPage() {
       ) : (
         <>
           <div className="toolbar" style={{ flexShrink: 0 }}>
+            <div></div>
             <div className="search-box">
               <span data-icon="search"></span>
               <input type="search" placeholder="Search species..." value={search} onChange={(event) => setSearch(event.target.value)} />

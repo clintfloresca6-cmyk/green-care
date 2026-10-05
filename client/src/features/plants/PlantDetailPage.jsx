@@ -4,6 +4,10 @@ import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils
 import { emojiFor, healthClass, computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from './Modal.jsx'
 import { useState } from 'react'
+import locationIcon from '../../assets/location.svg'
+import waterIcon from '../../assets/water.svg'
+import lightIcon from '../../assets/light.svg'
+import fertilizerIcon from '../../assets/fertilize.svg'
 
 export function PlantDetailPage({ plantId }) {
   const { state, actions } = useGreenCare()
@@ -55,11 +59,10 @@ export function PlantDetailPage({ plantId }) {
         <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.species_name)}</div>
         <div className="detail-info">
           <h1>{plant.name}</h1>
-          <p className="muted">{plant.species_name} · 📍 {plant.location}</p>
+          <p className="muted">{plant.species_name} · <img src={locationIcon} alt="Location" className="detail-icon" style={{ width: '15px'}}/> {plant.location}</p>
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
-            <button className="btn btn-primary btn-sm" type="button" onClick={() => actions.quickCare(plant.id, 'Water')}>Water Plant</button>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>
+            <button className="btn btn-primary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>
             <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.openModal('editPlant', { plantId: plant.id })}>Edit Plant</button>
             <button className="btn btn-ghost btn-sm" type="button" onClick={() => actions.openModal('confirmArchive', { plantId: plant.id })}>Archive Plant</button>
           </div>
@@ -71,10 +74,10 @@ export function PlantDetailPage({ plantId }) {
           <div className="card">
             <div className="card-head"><h3>Care Information</h3></div>
             <div className="care-info-grid">
-              <CareItem icon="💧" label="Watering" value={plant.watering} />
-              <CareItem icon="☀" label="Light" value={plant.light} />
-              <CareItem icon="🌿" label="Fertilizing" value={plant.fertilizing} />
-              <CareItem icon="📍" label="Location" value={plant.location} />
+              <CareItem icon={waterIcon} label="Watering" value={plant.watering} />
+              <CareItem icon={lightIcon} label="Light" value={plant.light} />
+              <CareItem icon={fertilizerIcon} label="Fertilizing" value={plant.fertilizing} />
+              <CareItem icon={locationIcon} label="Location" value={plant.location} />
             </div>
           </div>
 
@@ -137,7 +140,7 @@ export function PlantDetailPage({ plantId }) {
 function CareItem({ icon, label, value }) {
   return (
     <div className="care-info-item">
-      <span className="ci-icon">{icon}</span>
+      <img src={icon} alt={label} className="ci-icon" />
       <div><div className="ci-label">{label}</div><div className="ci-value">{value}</div></div>
     </div>
   )

@@ -3,8 +3,10 @@ import * as adminService from '../services/admin.service.js'
 import { pool } from '../config/db.js'
 
 export const list = asyncHandler(async (req, res) => {
+  // Use validated query if available, otherwise fall back to req.query
+  const query = req.validatedQuery || req.query
   // Alias for listReports to match route expectations
-  const reports = await adminService.listReports(req.query)
+  const reports = await adminService.listReports(query)
   res.json({ data: reports })
 })
 
@@ -43,4 +45,6 @@ export const stats = asyncHandler(async (_req, res) => {
   const snapshot = await adminService.stats()
   console.log('Admin stats result:', snapshot) // Debug log
   res.json({ data: snapshot })
+
+  console.log(stats)
 })

@@ -1,6 +1,7 @@
 import { fmtDateShort } from '../utils/date.js'
 import { computeTaskStatus, taskIcon } from '../utils/plants.js'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
+import calendarIcon from '../../assets/calendar1.svg'
 
 export function TaskRow({ task, plant, onEdit }) {
   const { actions } = useGreenCare()
@@ -46,6 +47,21 @@ export function TaskRow({ task, plant, onEdit }) {
     } catch (journalError) {
       console.error('Failed to create journal entry:', journalError)
       // Don't throw - we still want the task to be marked as complete even if journal fails
+    }
+
+    // Create event notification for task completion
+    try {
+      const notificationPayload = {
+        id: `event-task-completed-${Date.now()}`,
+        text: `Completed "${task.type}" task for ${plant?.name || 'a plant'}`,
+        icon: calendarIcon, // Using calendar icon for task events
+        notice_date: new Date().toISOString().slice(0, 10),
+        is_read: false,
+        page: 'schedule'
+      }
+      await actions.addNotification(notificationPayload)
+    } catch (notificationError) {
+      console.error('Failed to create event notification:', notificationError)
     }
   }
 

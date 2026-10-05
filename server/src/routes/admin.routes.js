@@ -8,7 +8,7 @@ import { updateReportSchema, listReportsQuerySchema } from '../validators/admin.
 const router = Router()
 router.use(currentUser, requireUser)
 
-router.get('/', validate(listReportsQuerySchema), adminController.list)
+router.get('/', validate(listReportsQuerySchema, 'query'), adminController.list)
 router.get('/stats', adminController.stats) // Add stats endpoint
 router.get('/:id', adminController.get)
 router.post('/', adminController.create) // TODO: Implement create function

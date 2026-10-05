@@ -92,8 +92,11 @@ button {
 }
 
 .muted {
+  display: flex;
+  align-items: center;
   color: var(--ink-600);
   font-size: 14px;
+  gap: 6px;
 }
 
 ::selection {
@@ -928,7 +931,7 @@ a,
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
   flex-wrap: wrap;
@@ -1058,8 +1061,22 @@ a,
   color: var(--ink-600);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 3px;
   margin-top: 4px;
+}
+
+.plant-info{
+  display: flex;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.plant-icon{
+  width: 15px;
+  height: 15px;
+  font-size: 14px;
 }
 
 .plant-card-actions {
@@ -1488,8 +1505,8 @@ a,
 }
 
 .t-task-icon{
-  width: 25px;
-  height: 25px;
+  width: 18px;
+  height: 18px;
   border-radius: 8px;
   font-size: 14px;
 }

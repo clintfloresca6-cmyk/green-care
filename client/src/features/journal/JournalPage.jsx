@@ -10,7 +10,6 @@ export function JournalPage() {
 
   // Log when journal entries are fetched (i.e., when state.journal changes)
   useEffect(() => {
-    console.log('Journal entries fetched:', state.journal)
   }, [state.journal])
   const entries = [...state.journal].sort((a, b) => {
     // Handle null/undefined dates - treat them as empty strings for sorting
@@ -32,7 +31,6 @@ export function JournalPage() {
         </div>
         <button className="btn btn-primary" type="button" onClick={() => {
           setModalOpen(true)
-          console.log(modalOpen)
         }}>+ New Entry</button>
       </div>
       <div className="journal-timeline">

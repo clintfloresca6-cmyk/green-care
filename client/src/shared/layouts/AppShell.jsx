@@ -5,6 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
 import notificationIcon from '../../assets/bell1.svg'
 import settingsIcon from '../../assets/gear.svg'
+import logoutIcon from '../../assets/logout.svg'
 
 export function AppShell({ page, children }) {
   const { state, actions, unreadCount } = useGreenCare()
@@ -53,6 +54,15 @@ export function AppShell({ page, children }) {
   const displayPhoto = currentUser?.photo || state.profile?.photo || null
   const displayRole = currentUser?.role === 'admin' ? 'Admin' : (state.profile?.role || 'Plant Enthusiast')
 
+  // Apply theme to HTML element
+  useEffect(() => {
+    if (state.settings.theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }, [state.settings.theme])
+
   return (
     <>
       <div className={sidebarOpen ? 'sidebar-overlay show' : 'sidebar-overlay'} onClick={() => setSidebarOpen(false)} />
@@ -96,7 +106,7 @@ export function AppShell({ page, children }) {
               </span>
             </button>
             <button className="nav-item nav-item--ghost" type="button" onClick={handleLogout}>
-              <span className="nav-icon" data-icon="logout"></span> Log out
+              <img className="nav-icon" src={logoutIcon} alt="Log out" /> Log Out
             </button>
           </div>
         </aside>
@@ -146,7 +156,7 @@ export function AppShell({ page, children }) {
 
 function NotificationPanel({ close }) {
   const { state, actions } = useGreenCare()
-  const sorted = [...state.notifications].sort((a, b) => (a.read === b.read ? 0 : a.read ? 1 : -1))
+  const sorted = [...state.notifications].sort((a, b) => (a.is_read === b.is_read ? 0 : a.is_read ? 1 : -1))
 
   function openNotification(notice) {
     actions.markNotificationRead(notice.id)
@@ -167,7 +177,8 @@ function NotificationPanel({ close }) {
       <div className="notif-list">
         {sorted.length ? sorted.map((notice) => (
           <button className={!notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
-            <span className="n-icon">{notice.icon}</span>
+            <span className="n-icon"><img src={notice.icon} alt="" /></span>
+            {!notice.is_read && <span className="dot-badge"></span>}
             <span>
               <span className="n-text">{notice.text}</span>
               <span className="n-time">{notice.notice_date}</span>

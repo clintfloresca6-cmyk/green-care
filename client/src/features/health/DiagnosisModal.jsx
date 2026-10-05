@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { todayISO } from '../../shared/utils/date.js'
+import warningIcon from '../../assets/warning.svg'
 
 export function DiagnosisModal({ preselectPlantId, onClose }) {
     const { state, actions } = useGreenCare()
@@ -94,6 +95,23 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
             console.error('Failed to create journal entry:', journalError)
             // Don't throw - we still want the health update to succeed even if journal fails
         }
+
+        // Create event notification for health update
+        try {
+            const notificationPayload = {
+                id: `event-health-updated-${Date.now()}`,
+                text: `Health updated to ${result} for ${state.plants.find(p => p.id === selectedPlantId)?.name || 'a plant'}`,
+                icon: warningIcon,
+                notice_date: todayISO(),
+                is_read: false,
+                page: 'plants',
+                plantId: selectedPlantId
+            }
+            actions.addNotification(notificationPayload)
+        } catch (notificationError) {
+            console.error('Failed to create event notification:', notificationError)
+        }
+
         // Show a toast
         actions.toast(`Health updated to ${result}`)
         // Close the modal

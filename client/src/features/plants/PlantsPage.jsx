@@ -4,13 +4,12 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from '../../features/library/Modal.jsx'
+import locationIcon from '../../assets/location.svg'
 
 const filters = [
   ['all', 'All'],
   ['healthy', 'Healthy'],
   ['attention', 'Needs Attention'],
-  ['indoor', 'Indoor'],
-  ['outdoor', 'Outdoor'],
 ]
 
 export function PlantsPage() {
@@ -51,8 +50,6 @@ export function PlantsPage() {
 
   if (filter === 'healthy') plants = plants.filter((plant) => plant.health === 'Healthy' || plant.health === 'Good')
   if (filter === 'attention') plants = plants.filter((plant) => plant.health === 'Needs Attention' || plant.health === 'Critical')
-  if (filter === 'indoor') plants = plants.filter((plant) => plant.zone === 'indoor')
-  if (filter === 'outdoor') plants = plants.filter((plant) => plant.zone === 'outdoor')
   if (query) plants = plants.filter((plant) => [plant.name, plant.species_name, plant.location].some((value) => value.toLowerCase().includes(query)))
 
   return (
@@ -62,7 +59,6 @@ export function PlantsPage() {
           <h1>My Plants</h1>
           <p className="muted">Your personal plant collection, all in one place.</p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => setShowAddPlantModal(true)}>+ Add Plant</button>
       </div>
 
       <div className="toolbar">
@@ -93,8 +89,11 @@ export function PlantsPage() {
                 </div>
                 <span className="plant-species">{plant.species_name || 'Unknown Species'}</span>
                 <div className="plant-meta">
-                  <span>📍 {plant.location || 'Unknown location'}</span>
-                  <span>
+                  <span className="plant-info">
+                    <img src={locationIcon} alt="Location" className="plant-icon" />
+                    {plant.location || 'Unknown location'}
+                  </span>
+                  <span className="plant-info">
                     {(() => {
                       const today = todayISO()
                       const upcomingTasks = state.tasks
@@ -103,15 +102,15 @@ export function PlantsPage() {
                       const nextTask = upcomingTasks[0]
                       return nextTask ? (
                         <>
-                          {taskIcon(nextTask.type || 'Check')} Next: {nextTask.type || 'Check'} ·
+                          {<img src={taskIcon(nextTask.type || 'Check')} alt={nextTask.type || 'Check'} className="plant-icon" />} Next: {nextTask.type || 'Check'} ·
                           {fmtDateShort(nextTask.date || todayISO())}
                         </>
                       ) : 'No upcoming tasks'
                     })()}
                   </span>
-                  <span>
+                  {/* <span>
                     💧 Last watered: {plant.lastWatered ? fmtDateShort(plant.lastWatered) : 'Never'}
-                  </span>
+                  </span> */}
                 </div>
                 <div className="plant-card-actions">
                   <span className="btn btn-secondary btn-sm">View Details</span>

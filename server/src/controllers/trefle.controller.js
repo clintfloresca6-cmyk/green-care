@@ -71,3 +71,30 @@ export const getTrefleSpeciesById = asyncHandler(async (req, res) => {
 
   res.json({ data: speciesData });
 });
+
+/**
+ * Search plants from Trefle API based on query
+ * @route GET /api/trefle/search
+ * @access Public
+ */
+export const searchTreflePlants = asyncHandler(async (req, res) => {
+  const query = req.query.q || req.query.query || '';
+  const page = parseInt(req.query.page) || 1;
+  const perPage = parseInt(req.query.per_page) || req.query.limit || 10;
+
+  if (!query) {
+    res.status(400).json({ error: 'Search query is required' });
+    return;
+  }
+
+  const result = await trefleService.searchPlants({
+    page,
+    pageSize: perPage,
+    query
+  });
+
+  res.json({
+    data: result.data,
+    pagination: result.pagination
+  });
+});

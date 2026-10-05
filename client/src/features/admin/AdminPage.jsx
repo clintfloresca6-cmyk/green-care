@@ -45,8 +45,8 @@ function DatabasePanel() {
   const species = state.library.filter(
     (item) =>
       !query ||
-      item.common.toLowerCase().includes(query) ||
-      item.scientific.toLowerCase().includes(query),
+      item.common_name.toLowerCase().includes(query) ||
+      item.scientific_name.toLowerCase().includes(query),
   )
 
   return (
@@ -75,18 +75,20 @@ function DatabasePanel() {
             <tr>
               <th>Common Name</th>
               <th>Scientific Name</th>
-              <th>Difficulty</th>
               <th>Light</th>
+              <th>Watering</th>
+              <th>Fertilizing</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {species.map((item) => (
               <tr key={item.id}>
-                <td>{item.common}</td>
-                <td style={{ fontStyle: 'italic' }}>{item.scientific}</td>
-                <td>{item.difficulty}</td>
+                <td>{item.common_name}</td>
+                <td style={{ fontStyle: 'italic' }}>{item.scientific_name}</td>
                 <td>{item.light}</td>
+                <td>{item.watering}</td>
+                <td>{item.fertilizing}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button
                     className="btn btn-secondary btn-sm"
@@ -99,8 +101,7 @@ function DatabasePanel() {
                     className="btn btn-ghost btn-sm"
                     type="button"
                     onClick={() =>
-                      actions.openModal('confirmDeleteSpecies', { speciesId: item.id })
-                    }
+                      actions.openModal('confirmDeleteSpecies', { speciesId: item.id })}
                   >
                     Delete
                   </button>
@@ -109,7 +110,7 @@ function DatabasePanel() {
             ))}
             {!species.length ? (
               <tr>
-                <td colSpan="5" className="muted">
+                <td colSpan="6" className="muted">
                   No species found.
                 </td>
               </tr>

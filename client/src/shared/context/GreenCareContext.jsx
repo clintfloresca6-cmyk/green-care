@@ -1,5 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../features/auth/AuthContext'
+import calendarIcon from '../../assets/calendar1.svg'
+import warningIcon from '../../assets/warning.svg'
+import locationIcon from '../../assets/location.svg'
 
 // ─── Static Data (equivalent to mock data healthIssues) ────────────────────────
 const HEALTH_ISSUES = {
@@ -31,6 +34,16 @@ const toTask = (row) => ({
 
 export function GreenCareProvider({ children }) {
   const { currentUser: authUser } = useAuth()
+
+  // Get theme from localStorage with fallback to 'light'
+  const getStoredTheme = () => {
+    if (typeof window !== 'undefined') {
+      const storedTheme = localStorage.getItem('greencare-theme')
+      return storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'light'
+    }
+    return 'light'
+  }
+
   const [state, setState] = useState(() => {
     // If no auth user, return minimal state
     if (!authUser) {
@@ -42,7 +55,7 @@ export function GreenCareProvider({ children }) {
         library: [],
         healthIssues: HEALTH_ISSUES,
         profile: null,
-        settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
+        settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: getStoredTheme(), reminderTime: '08:00', weekStart: 'mon' },
         activity: [],
         adminReports: [],
         toasts: [],
@@ -65,7 +78,7 @@ export function GreenCareProvider({ children }) {
         role: authUser.role,
         photo: authUser.photo || null,
       },
-      settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: 'light', reminderTime: '08:00', weekStart: 'mon' },
+      settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: getStoredTheme(), reminderTime: '08:00', weekStart: 'mon' },
       activity: [],
       adminReports: [],
       toasts: [],
@@ -143,6 +156,96 @@ export function GreenCareProvider({ children }) {
     fetchInitialData()
   }, [authUser])
 
+  // Compute derived notifications based on current tasks (useMemo for pure computation)
+  const derivedNotifications = useMemo(() => {
+    if (!authUser) return []
+
+    const today = new Date().toISOString().slice(0, 10)
+    const todayDate = new Date(today)
+
+    // Count tasks due today (not completed)
+    const tasksDueToday = state.tasks.filter(task =>
+      task.date === today &&
+      task.status !== 'completed'
+    ).length
+
+    // Count overdue tasks (date < today and not completed)
+    const overdueTasks = state.tasks.filter(task =>
+      task.date &&
+      new Date(task.date) < todayDate &&
+      task.status !== 'completed'
+    ).length
+
+    // Count tasks due this week (next 7 days, not completed)
+    const oneWeekFromToday = new Date()
+    oneWeekFromToday.setDate(oneWeekFromToday.getDate() + 7)
+    const oneWeekFromTodayISO = oneWeekFromToday.toISOString().slice(0, 10)
+
+    const tasksDueThisWeek = state.tasks.filter(task =>
+      task.date >= today &&
+      task.date <= oneWeekFromTodayISO &&
+      task.status !== 'completed'
+    ).length
+
+    // Create derived notifications array
+    const derivedNotifications = []
+
+    if (tasksDueToday > 0) {
+      derivedNotifications.push({
+        id: `derived-tasks-due-today`,
+        text: `${tasksDueToday} task${tasksDueToday === 1 ? '' : 's'} due today`,
+        icon: calendarIcon,
+        notice_date: today,
+        is_read: false,
+        page: 'schedule'
+      })
+    }
+
+    if (overdueTasks > 0) {
+      derivedNotifications.push({
+        id: `derived-overdue-tasks`,
+        text: `${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'}`,
+        icon: warningIcon,
+        notice_date: today,
+        is_read: false,
+        page: 'schedule'
+      })
+    }
+
+    if (tasksDueThisWeek > 0) {
+      derivedNotifications.push({
+        id: `derived-tasks-this-week`,
+        text: `${tasksDueThisWeek} task${tasksDueThisWeek === 1 ? '' : 's'} due this week`,
+        icon: calendarIcon,
+        notice_date: today,
+        is_read: false,
+        page: 'schedule'
+      })
+    }
+
+    return derivedNotifications
+  }, [state.tasks, authUser])
+
+  // Update state with derived notifications when they change
+  useEffect(() => {
+    // Update state with derived notifications
+    // We'll merge them with existing notifications, giving derived ones stable IDs
+    setState(prev => ({
+      ...prev,
+      notifications: [
+        ...prev.notifications.filter(n => n.id && !n.id.startsWith('derived-')), // Remove old derived notifications
+        ...derivedNotifications
+      ]
+    }))
+  }, [derivedNotifications])
+
+  // Save theme to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('greencare-theme', state.settings.theme)
+    }
+  }, [state.settings.theme])
+
   // Helper to make authenticated fetch calls
   const authFetch = useCallback(async (endpoint, options = {}) => {
     try {
@@ -157,7 +260,7 @@ export function GreenCareProvider({ children }) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || `Request failed: ${response.status}`)
+        throw new Error(errorData.error?.message || errorData.error || `Request failed: ${response.status}`)
       }
 
       return await response.json()
@@ -238,6 +341,24 @@ export function GreenCareProvider({ children }) {
           ...prev,
           plants: [...prev.plants, result.data]
         }))
+
+        // Create event notification for plant added
+        try {
+          const notificationPayload = {
+            id: `event-plant-added-${Date.now()}`,
+            text: `Added new plant: ${payload.name || 'Unknown Plant'}`,
+            icon: locationIcon, // Using location icon for plant events
+            notice_date: new Date().toISOString().slice(0, 10),
+            is_read: false,
+            page: 'plants',
+            plantId: result.data.id
+          }
+          // We don't await this as it's not critical if it fails
+          this.addNotification(notificationPayload).catch(err => console.error('Failed to add plant notification:', err))
+        } catch (notificationError) {
+          console.error('Failed to create plant event notification:', notificationError)
+        }
+
         return result.data
       } catch (error) {
         console.error('Failed to create plant:', error)
@@ -304,6 +425,23 @@ export function GreenCareProvider({ children }) {
           ...prev,
           tasks: [...prev.tasks, toTask(result.data)]
         }))
+
+        // Create event notification for task created
+        try {
+          const notificationPayload = {
+            id: `event-task-created-${Date.now()}`,
+            text: `New task created: ${payload.type || 'Task'} for plant`,
+            icon: calendarIcon, // Using calendar icon for task events
+            notice_date: new Date().toISOString().slice(0, 10),
+            is_read: false,
+            page: 'schedule'
+          }
+          // We don't await this as it's not critical if it fails
+          this.addNotification(notificationPayload).catch(err => console.error('Failed to add task notification:', err))
+        } catch (notificationError) {
+          console.error('Failed to create task event notification:', notificationError)
+        }
+
         return result.data
       } catch (error) {
         console.error('Failed to create task:', error)
@@ -413,8 +551,62 @@ export function GreenCareProvider({ children }) {
         console.error('Failed to list library:', error)
         throw error
       }
+    },
+
+    // Trefle actions
+    async searchTreflePlants(params = {}) {
+      try {
+        // Default params for consistency with existing library browsing
+        const defaultParams = {
+          page: 1,
+          perPage: 10,
+          query: ''
+        }
+        const searchParams = { ...defaultParams, ...params }
+
+        const result = await authFetch(`/trefle/search?page=${searchParams.page}&per_page=${searchParams.perPage}&q=${encodeURIComponent(searchParams.query)}`)
+        return result.data || []
+      } catch (error) {
+        console.error('Failed to search Trefle plants:', error)
+        throw error
+      }
+    },
+
+    // Settings actions
+    async updateSettings(settingsPatch) {
+      // Update the specific settings in the state locally
+      setState(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          ...settingsPatch
+        }
+      }))
+      return settingsPatch
+    },
+
+    // Event notifications actions
+    async addNotification(notification) {
+      try {
+        // Add notification to state
+        setState(prev => ({
+          ...prev,
+          notifications: [...prev.notifications, notification]
+        }))
+        return notification
+      } catch (error) {
+        console.error('Failed to add notification:', error)
+        throw error
+      }
     }
   }
+
+  // Save theme to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('greencare-theme', state.settings.theme)
+    }
+  }, [state.settings.theme])
 
   const isAuthenticated = Boolean(authUser)
 

@@ -27,7 +27,7 @@ export function NotificationsPage() {
       <div className="notif-list notif-list--page">
         {notifications.length ? notifications.map((notice) => (
           <button className={notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotice(notice)}>
-            <span className="n-icon">{notice.icon}</span>
+            <img className="n-icon" src={notice.icon} alt="" />
             <span>
               <span className="n-text">{notice.text}</span>
               <span className="n-time">{fmtDate(notice.notice_date)}</span>

@@ -43,14 +43,9 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
     // Trefle API response structure: { data: [...], meta: { ... } }
     const { data, meta } = response.data;
 
-    // Log raw data for inspection (first 2 plants)
-    console.log('Trefle API raw data (first 2 plants):', data.slice(0, 2));
-
     // Map the data to extract required fields and handle missing data
     const plants = data.map(mapPlantToRow);
 
-    // Log processed data for inspection (first 2 plants)
-    console.log('Trefle API processed data (first 2 plants):', plants.slice(0, 2));
 
     return {
       data: plants,
@@ -74,6 +69,73 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
     } else if (error.request) {
       // The request was made but no response was received
       throw new ApiError(503, 'Unable to connect to Trefle API');
+    } else {
+      // Something happened in setting up the request
+      throw new ApiError(500, error.message);
+    }
+  }
+}
+
+/**
+ * Search plants from Trefle API using the dedicated search endpoint
+ * @param {Object} params - Search parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.pageSize - Number of plants per page (default: 10)
+ * @param {string} params.query - Search query (required)
+ * @returns {Promise<Object>} - Object containing data and pagination info
+ */
+export async function searchPlants({ page = 1, pageSize = 10, query = '' } = {}) {
+  if (!query) {
+    throw new Error('Search query is required');
+  }
+
+  try {
+    const params = {
+      page,
+      per_page: pageSize,
+    };
+
+    if (query) {
+      params.q = query;
+    }
+
+    // Use the dedicated search endpoint as per Trefle API documentation
+    const response = await api.get('/plants/search', { params });
+
+    // Trefle API response structure: { data: [...], meta: { ... } }
+    const { data, meta } = response.data;
+
+    // Log raw data for inspection (first 2 plants)
+    
+
+    // Map the data to extract required fields and handle missing data
+    const plants = data.map(mapPlantToRow);
+
+    // Log processed data for inspection (first 2 plants)
+    
+
+    return {
+      data: plants,
+      pagination: {
+        current_page: meta.pagination?.current_page ?? page,
+        per_page: meta.pagination?.per_page ?? pageSize,
+        total_items: meta.pagination?.total ?? null,
+        total_pages: meta.pagination?.total_pages ?? null,
+      },
+    };
+  } catch (error) {
+    // Handle axios errors
+    console.error('Error searching from Trefle API:', error);
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      throw new ApiError(
+        error.response.status,
+        error.response.data?.message || 'Failed to search plants from Trefle API'
+      );
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new ApiError(503, 'Unable to connect to Trefle API for search');
     } else {
       // Something happened in setting up the request
       throw new ApiError(500, error.message);
@@ -219,7 +281,6 @@ export async function getOrFetchSpecies(speciesId) {
       // Trefle API response structure for plant endpoint: { data: { ... } }
       const plantData = response.data.data;
 
-      console.log(`Fetched species ${speciesId} from Trefle plants endpoint:`, plantData);
       // Map the plant data to format expected by our application
       const mappedPlant = mapSpeciesToRow(plantData);
 
@@ -228,9 +289,6 @@ export async function getOrFetchSpecies(speciesId) {
 
       return mappedPlant;
     } catch (plantEndpointError) {
-      // If plants endpoint by ID fails, try approach 2: search through plants list
-      console.log(`Plants endpoint by ID failed for ${speciesId}, trying search approach:`, plantEndpointError.message);
-
       // Fetch a reasonable batch of plants to search through
       // We'll fetch the first few pages to increase chances of finding the plant
       const searchPageSize = 50; // Reasonable batch size

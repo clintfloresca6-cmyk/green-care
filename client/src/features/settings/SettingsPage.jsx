@@ -13,7 +13,6 @@ export function SettingsPage() {
           <Toggle label="Care reminders" checked={settings.careReminders} onChange={(checked) => actions.updateSettings({ careReminders: checked })} />
           <Toggle label="Overdue reminders" checked={settings.overdueReminders} onChange={(checked) => actions.updateSettings({ overdueReminders: checked })} />
           <Toggle label="Plant health alerts" checked={settings.healthAlerts} onChange={(checked) => actions.updateSettings({ healthAlerts: checked })} />
-          <Toggle label="Browser notifications" checked={settings.browserNotifs} onChange={(checked) => actions.updateSettings({ browserNotifs: checked })} />
         </div>
 
         <div className="card">
@@ -27,7 +26,7 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="card">
+        {/* <div className="card">
           <div className="card-head"><h3>Preferences</h3></div>
           <div className="form-row">
             <label htmlFor="reminderTime">Default watering reminder time</label>
@@ -40,7 +39,7 @@ export function SettingsPage() {
               <button className={settings.weekStart === 'sun' ? 'seg active' : 'seg'} type="button" onClick={() => actions.updateSettings({ weekStart: 'sun' })}>Sunday</button>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </section>
   )
