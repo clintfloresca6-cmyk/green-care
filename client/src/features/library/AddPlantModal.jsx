@@ -8,6 +8,9 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
   const [light, setLight] = useState(defaultLight || '');
   const [watering, setWatering] = useState(defaultWatering || '');
   const [fertilizing, setFertilizing] = useState(defaultFertilizing || '');
+  const [originalLight, setOriginalLight] = useState(defaultLight || '');
+  const [originalWatering, setOriginalWatering] = useState(defaultWatering || '');
+  const [originalFertilizing, setOriginalFertilizing] = useState(defaultFertilizing || '');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,10 +40,14 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
           photo: photo || null, // Include photo (either uploaded or default)
         };
 
+        console.log('Submitting plant data:', plantData);
+
         // Call the onAddPlant callback with the plant data
         if (onAddPlant) {
           await onAddPlant(plantData);
         }
+
+        console.log('Plant added successfully:', plantData);
 
         // Reset form on success
         setError('');
@@ -87,6 +94,27 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
       setFertilizing(defaultFertilizing);
     }
   }, [defaultFertilizing, fertilizing]);
+
+  // Set original light from prop (the recommended value from data)
+  useEffect(() => {
+    if (defaultLight) {
+      setOriginalLight(defaultLight);
+    }
+  }, [defaultLight]);
+
+  // Set original watering from prop (the recommended value from data)
+  useEffect(() => {
+    if (defaultWatering) {
+      setOriginalWatering(defaultWatering);
+    }
+  }, [defaultWatering]);
+
+  // Set original fertilizing from prop (the recommended value from data)
+  useEffect(() => {
+    if (defaultFertilizing) {
+      setOriginalFertilizing(defaultFertilizing);
+    }
+  }, [defaultFertilizing]);
 
   return (
     <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', margin: 'auto' }}>
@@ -140,11 +168,21 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
                 required
               >
                 <option value="">-- Select Light Condition --</option>
-                <option value="Bright Indirect">Bright Indirect</option>
-                <option value="Low Light">Low Light</option>
-                <option value="Full Sun">Full Sun</option>
-                <option value="Partial Shade">Partial Shade</option>
-                <option value="Medium Light">Medium Light</option>
+                <option value="Bright Indirect">
+                  Bright Indirect{originalLight !== '—' && light === originalLight && originalLight === 'Bright Indirect' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Low light">
+                  Low light{originalLight !== '—' && light === originalLight && originalLight === 'Low light' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Full Sun">
+                  Full Sun{originalLight !== '—' && light === originalLight && originalLight === 'Full Sun' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Partial shade">
+                  Partial shade{originalLight !== '—' && light === originalLight && originalLight === 'Partial shade' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Medium light">
+                  Medium light{originalLight !== '—' && light === originalLight && originalLight === 'Medium light' ? ' (Recommended)' : ''}
+                </option>
               </select>
             </div>
             <div className="form-row">
@@ -157,10 +195,18 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
                 required
               >
                 <option value="">-- Select Watering Frequency --</option>
-                <option value="Every 3 days">Every 3 days</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Every 10 days">Every 10 days</option>
-                <option value="Every 2 weeks">Every 2 weeks</option>
+                <option value="Every 3 days">
+                  Every 3 days{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 3 days' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Weekly">
+                  Weekly{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Weekly' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Every 10 days">
+                  Every 10 days{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 10 days' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Every 2 weeks">
+                  Every 2 weeks{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 2 weeks' ? ' (Recommended)' : ''}
+                </option>
               </select>
             </div>
             <div className="form-row">
@@ -173,14 +219,22 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
                 required
               >
                 <option value="">-- Select Fertilizing Frequency --</option>
-                <option value="Monthly">Monthly</option>
-                <option value="Every 2 weeks">Every 2 weeks</option>
-                <option value="Every 6 weeks">Every 6 weeks</option>
-                <option value="Seasonal">Seasonal</option>
+                <option value="Monthly">
+                  Monthly{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Monthly' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Every 2 Weeks">
+                  Every 2 Weeks{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Every 2 Weeks' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Every 6 Weeks">
+                  Every 6 Weeks{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Every 6 Weeks' ? ' (Recommended)' : ''}
+                </option>
+                <option value="Seasonal">
+                  Seasonal{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Seasonal' ? ' (Recommended)' : ''}
+                </option>
               </select>
             </div>
           </div>
-          <div class="form-row">
+          <div className="form-row">
             <label>Notes</label>
             <textarea
               name="notes"
@@ -189,7 +243,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               disabled={processing}
             />
           </div>
-          <div class="form-row">
+          <div className="form-row">
             <label>Plant Photo</label>
             <input
               type="file"

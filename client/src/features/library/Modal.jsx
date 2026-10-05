@@ -77,13 +77,6 @@ export function Modal({
                     <div className="care-value">{modalPlantData.fertilizing}</div>
                   </div>
                 </div>
-                <div className="care-info-item">
-                  <span className="care-icon">📈</span>
-                  <div>
-                    <div className="care-label">Difficulty</div>
-                    <div className="care-value">{modalPlantData.difficulty}</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -117,6 +110,9 @@ export function Modal({
           onAddPlant={onAddPlant}
           defaultSpecies={modalPlantData?.scientific_name || ''}
           defaultPhoto={modalPlantData?.photo_url || null}
+          defaultLight={modalPlantData?.light || ''}
+          defaultWatering={modalPlantData?.watering || ''}
+          defaultFertilizing={modalPlantData?.fertilizing || ''}
         />
       </div>
     );

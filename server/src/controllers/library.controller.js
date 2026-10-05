@@ -20,7 +20,7 @@ export const search = asyncHandler(async (req, res) => {
   const like = `%${q}%`
 
   const [cached] = await pool.query(
-    `SELECT * FROM species_cache
+    `SELECT id, common_name, scientific_name, description, photo_url, light, watering, fertilizing FROM species_cache
       WHERE common_name LIKE ? OR scientific_name LIKE ?
       ORDER BY common_name
       LIMIT ? OFFSET ?`,

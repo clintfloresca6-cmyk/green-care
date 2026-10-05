@@ -42,9 +42,7 @@ export function PlantDetailPage({ plantId }) {
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
             <button className="btn btn-primary btn-sm" type="button" onClick={() => actions.quickCare(plant.id, 'Water')}>Water Plant</button>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.quickCare(plant.id, 'Fertilize')}>Fertilize</button>
             <button className="btn btn-secondary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.openModal('updateHealth', { plantId: plant.id })}>Update Health</button>
             <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.openModal('editPlant', { plantId: plant.id })}>Edit Plant</button>
             <button className="btn btn-ghost btn-sm" type="button" onClick={() => actions.openModal('confirmArchive', { plantId: plant.id })}>Archive Plant</button>
           </div>
@@ -58,9 +56,7 @@ export function PlantDetailPage({ plantId }) {
             <div className="care-info-grid">
               <CareItem icon="💧" label="Watering" value={plant.watering} />
               <CareItem icon="☀" label="Light" value={plant.light} />
-              <CareItem icon="🌡" label="Temperature" value="18-27°C ideal" />
               <CareItem icon="🌿" label="Fertilizing" value={plant.fertilizing} />
-              <CareItem icon="🪴" label="Repotting" value="Every 1-2 years" />
               <CareItem icon="📍" label="Location" value={plant.location} />
             </div>
           </div>

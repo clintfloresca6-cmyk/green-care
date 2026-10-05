@@ -3,25 +3,15 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor } from '../../shared/utils/plants.js'
 import { Modal } from './Modal.jsx'
 
-const filters = [
-  ['all', 'All'],
-  ['indoor', 'Indoor'],
-  ['outdoor', 'Outdoor'],
-  ['low', 'Low Light'],
-  ['medium', 'Medium Light'],
-  ['beginner', 'Beginner Friendly'],
-]
 
 export function LibraryPage() {
   const { state, actions } = useGreenCare()
   const [treflePlants, setTreflePlants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPlantData, setModalPlantData] = useState(null)
 
@@ -65,23 +55,17 @@ export function LibraryPage() {
     }
 
     fetchTreflePlants()
-  }, [offset, filter, search])
+  }, [offset, search])
 
-  // Reset to beginning when filter or search changes
+  // Reset to beginning when search changes
   useEffect(() => {
     setOffset(0)
     setHasMore(true)
-  }, [filter, search])
+  }, [search])
 
   // Filter and search plants
   let plants = [...treflePlants]
-
-  if (filter === 'indoor') plants = plants.filter((item) => item.zone === 'indoor')
-  if (filter === 'outdoor') plants = plants.filter((item) => item.zone === 'outdoor')
-  if (filter === 'low') plants = plants.filter((item) => item.light === 'low')
-  if (filter === 'medium') plants = plants.filter((item) => item.light === 'medium')
-  if (filter === 'beginner') plants = plants.filter((item) => item.difficulty === 'Beginner')
-  if (query) plants = plants.filter((item) => item.common_name.toLowerCase().includes(query) || item.scientific_name.toLowerCase().includes(query))
+  if (search) plants = plants.filter((item) => item.common_name.toLowerCase().includes(search) || item.scientific_name.toLowerCase().includes(search))
 
   return (
     <section className="page active" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -99,11 +83,6 @@ export function LibraryPage() {
       ) : (
         <>
           <div className="toolbar" style={{ flexShrink: 0 }}>
-            <div className="filter-pills">
-              {filters.map(([id, label]) => (
-                <button className={filter === id ? 'pill active' : 'pill'} type="button" key={id} onClick={() => setFilter(id)}>{label}</button>
-              ))}
-            </div>
             <div className="search-box">
               <span data-icon="search"></span>
               <input type="search" placeholder="Search species..." value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -154,10 +133,6 @@ export function LibraryPage() {
                   )}
                   <div className="species-name">{plant.common_name || 'Unknown'}</div>
                   <div className="species-sci">{plant.scientific_name || ''}</div>
-                  <div className="species-tags">
-                    <span className="tag">{plant.difficulty || 'Beginner'}</span>
-                    <span className="tag">{plant.light || 'Unknown'}</span>
-                  </div>
                 </button>
               ))}
             </div>
