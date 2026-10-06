@@ -109,6 +109,7 @@ export function Modal({
           onClose={handleClose}
           onAddPlant={onAddPlant}
           defaultSpecies={modalPlantData?.scientific_name || ''}
+          defaultSpeciesId={modalPlantData?.id || null}
           defaultPhoto={modalPlantData?.photo_url || null}
           defaultLight={modalPlantData?.light || ''}
           defaultWatering={modalPlantData?.watering || ''}

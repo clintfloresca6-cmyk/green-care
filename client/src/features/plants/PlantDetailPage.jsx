@@ -56,10 +56,10 @@ export function PlantDetailPage({ plantId }) {
     <section className="page active">
       <button className="back-link" type="button" onClick={() => goTo('plants')}>← Back to My Plants</button>
       <div className="detail-header">
-        <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.species_name)}</div>
+        <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.common_name || plant.species_name || '')}</div>
         <div className="detail-info">
           <h1>{plant.name}</h1>
-          <p className="muted">{plant.species_name} · <img src={locationIcon} alt="Location" className="detail-icon" style={{ width: '15px'}}/> {plant.location}</p>
+          <p className="muted">{plant.common_name || plant.species_name || 'Unknown Species'} · <img src={locationIcon} alt="Location" className="detail-icon" style={{ width: '15px'}}/> {plant.location}</p>
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
             <button className="btn btn-primary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>

@@ -4,9 +4,11 @@ import { randomUUID } from 'node:crypto'
 
 export async function listForUser(userId) {
   const [rows] = await pool.query(
-    `SELECT * FROM plants
-      WHERE user_id = ? AND archived_at IS NULL
-      ORDER BY created_at DESC`,
+    `SELECT p.*, sc.common_name
+      FROM plants p
+      LEFT JOIN species_cache sc ON p.species_id = sc.id
+      WHERE p.user_id = ? AND p.archived_at IS NULL
+      ORDER BY p.created_at DESC`,
     [userId],
   )
   return rows
@@ -14,7 +16,10 @@ export async function listForUser(userId) {
 
 export async function getForUser(userId, plantId) {
   const [rows] = await pool.query(
-    'SELECT * FROM plants WHERE id = ? AND user_id = ? AND archived_at IS NULL',
+    `SELECT p.*, sc.common_name
+      FROM plants p
+      LEFT JOIN species_cache sc ON p.species_id = sc.id
+      WHERE p.id = ? AND p.user_id = ? AND p.archived_at IS NULL`,
     [plantId, userId],
   )
   if (!rows.length) throw new ApiError(404, 'Plant not found')

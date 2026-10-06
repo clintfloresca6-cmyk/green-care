@@ -111,45 +111,56 @@ export function LibraryPage() {
             padding: '0 28px'
           }}>
             <div className="library-grid">
-              {plants.map((plant) => (
-                <button className="species-card" type="button" key={plant.id} onClick={async () => {
-                  try {
-                    // Fetch specific species data using the new endpoint
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/trefle/species/${plant.id}`, {
-                      method: 'GET',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      credentials: 'include',
-                    })
+              {loading && plants.length === 0 ? (
+                // Show skeleton loaders while fetching initial data
+                [...Array(8)].map((_, index) => (
+                  <button className="species-card skeleton-loader" type="button" key={`skeleton-${index}`} disabled>
+                    <div className="species-icon skeleton-icon"></div>
+                    <div className="species-name skeleton-text"></div>
+                    <div className="species-sci skeleton-text"></div>
+                  </button>
+                ))
+              ) : (
+                plants.map((plant) => (
+                  <button className="species-card" type="button" key={plant.id} onClick={async () => {
+                    try {
+                      // Fetch specific species data using the new endpoint
+                      const response = await fetch(`${import.meta.env.VITE_API_URL}/trefle/species/${plant.id}`, {
+                        method: 'GET',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                      })
 
-                    if (!response.ok) {
-                      throw new Error(`Failed to fetch species data: ${response.status}`)
+                      if (!response.ok) {
+                        throw new Error(`Failed to fetch species data: ${response.status}`)
+                      }
+
+                      const data = await response.json()
+                      setModalPlantData(data.data || null)
+                      setModalOpen(true)
+                    } catch (err) {
+                      console.error('Error fetching species data:', err)
+                      // Fallback to pre-fetched data if API call fails
+                      setModalPlantData(plant)
+                      setModalOpen(true)
                     }
-
-                    const data = await response.json()
-                    setModalPlantData(data.data || null)
-                    setModalOpen(true)
-                  } catch (err) {
-                    console.error('Error fetching species data:', err)
-                    // Fallback to pre-fetched data if API call fails
-                    setModalPlantData(plant)
-                    setModalOpen(true)
-                  }
-                }}>
-                  {plant.photo_url ? (
-                    <img
-                      src={plant.photo_url}
-                      alt={`${plant.common_name || 'Plant'} photo`}
-                      className="species-icon"
-                    />
-                  ) : (
-                    <div className="species-icon">{emojiFor(plant.common_name || '')}</div>
-                  )}
-                  <div className="species-name">{plant.common_name || 'Unknown'}</div>
-                  <div className="species-sci">{plant.scientific_name || ''}</div>
-                </button>
-              ))}
+                  }}>
+                    {plant.photo_url ? (
+                      <img
+                        src={plant.photo_url}
+                        alt={`${plant.common_name || 'Plant'} photo`}
+                        className="species-icon"
+                      />
+                    ) : (
+                      <div className="species-icon">{emojiFor(plant.common_name || '')}</div>
+                    )}
+                    <div className="species-name">{plant.common_name || 'Unknown'}</div>
+                    <div className="species-sci">{plant.scientific_name || ''}</div>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 

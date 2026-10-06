@@ -78,7 +78,7 @@ export function PlantsPage() {
           {plants.map((plant) => (
             <button className="plant-card" type="button" key={plant.id} onClick={() => goTo('plants', plant.id)}>
               <div className="plant-thumb" style={{ background: 'var(--sage-100)' }}>
-                {plant.photo_url ? <img src={plant.photo_url} alt={plant.name || 'Plant'} /> : emojiFor(plant.species_name || '')}
+                {plant.photo_url ? <img src={plant.photo_url} alt={plant.name || 'Plant'} /> : emojiFor(plant.common_name || plant.species_name || '')}
               </div>
               <div className="plant-card-body">
                 <div className="plant-card-top">
@@ -87,7 +87,7 @@ export function PlantsPage() {
                     {plant.health || 'Good'}
                   </span>
                 </div>
-                <span className="plant-species">{plant.species_name || 'Unknown Species'}</span>
+                <span className="plant-species">{plant.common_name || plant.species_name || 'Unknown Species'}</span>
                 <div className="plant-meta">
                   <span className="plant-info">
                     <img src={locationIcon} alt="Location" className="plant-icon" />

@@ -107,7 +107,7 @@ export function SchedulePage() {
                 <button className={`cal-cell ${iso === todayISO() ? 'today' : ''} ${iso === selectedDate ? 'selected' : ''}`} type="button" key={iso} onClick={() => setSelectedDate(iso)}>
                   <span className="cal-num">{day}</span>
                   <span className="cal-tasks">
-                    {tasksForDay.slice(0, 4).map((task) => (
+                    {tasksForDay.slice(0, 12).map((task) => (
                       <img key={task.id} src={taskIcon(task.type)} alt="" className="cal-task-icon" />
                     ))}
                   </span>
@@ -117,7 +117,7 @@ export function SchedulePage() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card task">
           <div className="card-head"><h3>{selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? fmtDate(selectedDate) : 'Select a date'}</h3></div>
           <div className="task-list">
             {selectedDate ? dayTasks.length ? dayTasks.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} onEdit={openEditTask} key={task.id} />) : <p className="muted">No tasks scheduled for this date.</p> : <p className="muted">Pick a calendar date to inspect its care tasks.</p>}

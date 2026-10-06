@@ -617,9 +617,12 @@ a,
 
 .card-head {
   display: flex;
+  position:sticky;
+  background: var(--paper);
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+  top: 0;
   gap: 10px;
 }
 
@@ -696,6 +699,9 @@ a,
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 30rem;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .task-row {
@@ -1179,6 +1185,52 @@ a,
   border-radius: 99px;
 }
 
+/* Skeleton loader styles */
+.skeleton-loader {
+  background: var(--sage-50);
+  cursor: default;
+  pointer-events: none;
+}
+
+.skeleton-loader .species-icon,
+.skeleton-loader .species-icon.skeleton-icon {
+  background: var(--border);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-loader .species-name,
+.skeleton-loader .species-sci,
+.skeleton-loader .species-name.skeleton-text,
+.skeleton-loader .species-sci.skeleton-text {
+  background: var(--border);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-loader .species-name.skeleton-text {
+  width: 60%;
+  height: 18px;
+  margin-top: 4px;
+}
+
+.skeleton-loader .species-sci.skeleton-text {
+  width: 40%;
+  height: 14px;
+  margin-top: 2px;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-color: var(--border);
+  }
+  50% {
+    background-color: var(--sage-100);
+  }
+  100% {
+    background-color: var(--border);
+  }
+}
+
 /* Plant detail */
 .detail-header {
   display: flex;
@@ -1478,7 +1530,7 @@ a,
 
 .cal-task-icon{
   width: 20px;
-  height: 20px;
+  height: auto;
 }
 
 .task-table {

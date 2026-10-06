@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 
-export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultPhoto = null, defaultLight = '', defaultWatering = '', defaultFertilizing = '' }) {
+export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultSpeciesId = null, defaultPhoto = null, defaultLight = '', defaultWatering = '', defaultFertilizing = '' }) {
   const [photo, setPhoto] = useState(defaultPhoto);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [species, setSpecies] = useState(defaultSpecies || '');
+  const [speciesId, setSpeciesId] = useState(defaultSpeciesId ?? null);
   const [light, setLight] = useState(defaultLight || '');
   const [watering, setWatering] = useState(defaultWatering || '');
   const [fertilizing, setFertilizing] = useState(defaultFertilizing || '');
@@ -32,6 +33,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
         const plantData = {
           name: data.name.trim(),
           speciesName: data.species.trim(),
+          speciesId: speciesId,
           location: data.location || null,
           light: data.light || null,
           watering: data.watering || null,
@@ -73,6 +75,13 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
       setSpecies(defaultSpecies);
     }
   }, [defaultSpecies, species]);
+
+  // Set speciesId from prop when it changes (but only if not already set by user)
+  useEffect(() => {
+    if (defaultSpeciesId !== null && speciesId === null) {
+      setSpeciesId(defaultSpeciesId);
+    }
+  }, [defaultSpeciesId, speciesId]);
 
   // Set light from prop when it changes (but only if not already set by user)
   useEffect(() => {
