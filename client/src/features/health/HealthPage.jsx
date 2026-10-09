@@ -25,20 +25,30 @@ export function HealthPage() {
         }}>📷 Diagnose a Plant</button>
       </div>
 
-      <div className="health-grid">
-        {state.plants.map((plant) => (
-          <div className="health-card" key={plant.id}>
-            <div style={{ fontSize: 30, width: '70px', height: '70px', borderRadius: '8px' }}>{plant.photo_url ? <img src={plant.photo_url} alt="" className='plant-photo' /> : emojiFor(plant.species)}</div>
-            <div style={{ fontWeight: 600 }}>{plant.name}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>{plant.species}</div>
-            <div><span className={`health-status-dot ${statusDotClass(plant.health)}`}></span>{plant.health}</div>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => {
-              setModalPlantId(plant.id)
-              setShowHealthModal(true)
-            }}>Update Health</button>
-          </div>
-        ))}
-      </div>
+      {state.plants.length === 0 ? (
+        <div className="empty-state">
+          <p>You don't have any plants yet. Add your first plant to start tracking their health!</p>
+          <button className="btn btn-primary" type="button" onClick={() => {
+            // Navigate to plants page or show add plant modal
+            // This would need to be implemented based on your routing
+          }}>Add Your First Plant</button>
+        </div>
+      ) : (
+        <div className="health-grid">
+          {state.plants.map((plant) => (
+            <div className="health-card" key={plant.id}>
+              <div style={{ fontSize: 30, width: '70px', height: '70px', borderRadius: '8px' }}>{plant.photo_url ? <img src={plant.photo_url} alt="" className='plant-photo' /> : emojiFor(plant.species)}</div>
+              <div style={{ fontWeight: 600 }}>{plant.name}</div>
+              <div className="muted" style={{ fontSize: 12.5 }}>{plant.species}</div>
+              <div><span className={`health-status-dot ${statusDotClass(plant.health)}`}></span>{plant.health}</div>
+              <button className="btn btn-secondary btn-sm" type="button" onClick={() => {
+                setModalPlantId(plant.id)
+                setShowHealthModal(true)
+              }}>Update Health</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showHealthModal && (
         <Modal preselectPlantId={modalPlantId} onClose={() => {

@@ -1,0 +1,2 @@
+- [User data isolation bug in auth controller](user-data-isolation-bug.md) — Auth controller endpoints expose all user data to any authenticated user
+- [Health page empty state enhancement](health-page-empty-state.md) — Added empty state to HealthPage.jsx when user has no plants
