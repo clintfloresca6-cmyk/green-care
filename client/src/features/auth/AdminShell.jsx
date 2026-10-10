@@ -2,30 +2,34 @@ import { useState } from 'react'
 import { goTo } from '../../app/routes.js'
 import { Avatar } from '../../shared/components/Avatar.jsx'
 import { useAuth } from './AuthContext.jsx'
+import plantIcon from '../../assets/plant.svg'
+import reportIcon from '../../assets/stat.svg'
+import notificationIcon from '../../assets/bell.svg'
+import settingsIcon from '../../assets/gear.svg'
 
 const adminNavItems = [
   {
     id: 'database',
     label: 'Plant Database',
-    icon: 'database',
+    icon: plantIcon,
     description: 'Manage species library',
   },
   {
     id: 'reports',
     label: 'User Reports',
-    icon: 'reports',
+    icon: reportIcon,
     description: 'Review flagged content',
   },
   {
     id: 'templates',
     label: 'Notification Templates',
-    icon: 'bell',
+    icon: notificationIcon,
     description: 'Edit alert messages',
   },
   {
     id: 'system',
     label: 'System Settings',
-    icon: 'settings',
+    icon: settingsIcon,
     description: 'Platform configuration',
   },
 ]
@@ -77,7 +81,7 @@ export function AdminShell({ children, activeSection, onSectionChange }) {
                   setSidebarOpen(false)
                 }}
               >
-                <span className="nav-icon" data-icon={item.icon} />
+                <img src={item.icon} className="nav-icon" />
                 <span className="admin-nav-text">
                   <span className="admin-nav-label">{item.label}</span>
                   <span className="admin-nav-desc">{item.description}</span>

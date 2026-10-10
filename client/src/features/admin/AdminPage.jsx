@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
+import { Edit } from './EditModal.jsx'
 
 export function AdminPage({ section = 'database' }) {
   return (
@@ -41,6 +42,7 @@ function sectionSubtitle(section) {
 function DatabasePanel() {
   const { state, actions } = useGreenCare()
   const [search, setSearch] = useState('')
+  const [editingSpeciesId, setEditingSpeciesId] = useState(null)
   const query = search.toLowerCase()
   const species = state.library.filter(
     (item) =>
@@ -90,21 +92,30 @@ function DatabasePanel() {
                 <td>{item.watering}</td>
                 <td>{item.fertilizing}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    type="button"
-                    onClick={() => actions.openModal('speciesAdmin', { speciesId: item.id })}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    onClick={() =>
-                      actions.openModal('confirmDeleteSpecies', { speciesId: item.id })}
-                  >
-                    Delete
-                  </button>
+                  {editingSpeciesId === item.id ? (
+                    <Edit
+                      speciesId={item.id}
+                      onClose={() => setEditingSpeciesId(null)}
+                    />
+                  ) : (
+                    <>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => setEditingSpeciesId(item.id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        type="button"
+                        onClick={() =>
+                          actions.openModal('confirmDeleteSpecies', { speciesId: item.id })}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -118,6 +129,12 @@ function DatabasePanel() {
           </tbody>
         </table>
       </div>
+      {editingSpeciesId !== null && (
+        <Edit
+          speciesId={editingSpeciesId}
+          onClose={() => setEditingSpeciesId(null)}
+        />
+      )}
     </>
   )
 }
@@ -151,7 +168,7 @@ function ReportsPanel() {
                 <td>
                   <strong style={{ fontSize: 13 }}>{report.subject}</strong>
                 </td>
-                <td className="muted">{report.detail}</td>
+                <td className="muted" style={{ height: '50px'}}>{report.detail}</td>
                 <td>
                   <span
                     className={`badge ${

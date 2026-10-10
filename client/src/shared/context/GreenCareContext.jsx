@@ -59,6 +59,7 @@ export function GreenCareProvider({ children }) {
         activity: [],
         adminReports: [],
         toasts: [],
+        modal: null,
       }
     }
 
@@ -82,6 +83,7 @@ export function GreenCareProvider({ children }) {
       activity: [],
       adminReports: [],
       toasts: [],
+      modal: null,
     }
   })
 
@@ -272,10 +274,16 @@ export function GreenCareProvider({ children }) {
   const actions = {
     // Modal actions (simplified - in a full app these would update modal state)
     openModal: (type, props = {}) => {
-      console.log('Opening modal:', type, props)
+      setState(prev => ({
+        ...prev,
+        modal: { type, props }
+      }));
     },
     closeModal: () => {
-      console.log('Closing modal')
+      setState(prev => ({
+        ...prev,
+        modal: null
+      }));
     },
     toast: (message) => {
       const toast = {
@@ -572,6 +580,20 @@ export function GreenCareProvider({ children }) {
       }
     },
 
+    // Species actions
+    async saveSpecies(speciesId, speciesData) {
+      try {
+        const result = await authFetch(`/admin/species/${speciesId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(speciesData)
+        })
+        return result.data
+      } catch (error) {
+        console.error('Failed to save species:', error)
+        throw error
+      }
+    },
+
     // Settings actions
     async updateSettings(settingsPatch) {
       // Update the specific settings in the state locally
@@ -626,7 +648,20 @@ export function GreenCareProvider({ children }) {
         console.error('Failed to create report:', error)
         throw error
       }
-    }
+    },
+
+    async updateReport(reportId, status) {
+      try {
+        const result = await authFetch(`/reports/${reportId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status })
+        })
+        return result.data
+      } catch (error) {
+        console.error('Failed to update report:', error)
+        throw error
+      }
+    },
   }
 
   // Save theme to localStorage whenever it changes

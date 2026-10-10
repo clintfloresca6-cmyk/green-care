@@ -54,7 +54,7 @@ export async function fetchPlants({ page = 1, pageSize = 10, query = '' } = {}) 
         per_page: meta.pagination?.per_page ?? pageSize,
         total_items: meta.pagination?.total ?? null,
         total_pages: meta.pagination?.total_pages ?? null,
-      },
+      }
     };
   } catch (error) {
     // Handle axios errors
@@ -106,13 +106,13 @@ export async function searchPlants({ page = 1, pageSize = 10, query = '' } = {})
     const { data, meta } = response.data;
 
     // Log raw data for inspection (first 2 plants)
-    
+
 
     // Map the data to extract required fields and handle missing data
     const plants = data.map(mapPlantToRow);
 
     // Log processed data for inspection (first 2 plants)
-    
+
 
     return {
       data: plants,
@@ -121,7 +121,7 @@ export async function searchPlants({ page = 1, pageSize = 10, query = '' } = {})
         per_page: meta.pagination?.per_page ?? pageSize,
         total_items: meta.pagination?.total ?? null,
         total_pages: meta.pagination?.total_pages ?? null,
-      },
+      }
     };
   } catch (error) {
     // Handle axios errors
@@ -397,10 +397,10 @@ export function mapSpeciesToRow(species) {
   let watering = '—'; // Default value
   const humidityValue = growth?.soil_humidity == null ? null : parseFloat(growth.soil_humidity);
   if (Number.isFinite(humidityValue)) {
-    if (humidityValue >= 8) watering = 'Every 3 days';
+    if (humidityValue >= 8) watering = 'Every 3 Days';
     else if (humidityValue >= 6) watering = 'Weekly';
-    else if (humidityValue >= 4) watering = 'Every 10 days';
-    else watering = 'Every 2 weeks';
+    else if (humidityValue >= 4) watering = 'Every 10 Days';
+    else watering = 'Every 2 Weeks';
   }
 
   // Fertilizing: map growth.soil_nutriments (0-10 scale) to fertilizing frequency
@@ -424,4 +424,37 @@ export function mapSpeciesToRow(species) {
     description: (species.description ?? species.bibliography ?? `${species.year ?? ''}`.trim()) || null,
     photo_url: photoUrl,
   };
+}
+
+/**
+ * Update a species in the species_cache table with the given fields
+ * @param {string} speciesId - Species ID to update
+ * @param {Object} updates - Object containing fields to update (common_name, scientific_name, light, watering, fertilizing)
+ * @preserves existing values for description, photo_url, difficulty, zone, light_level
+ */
+export async function updateSpeciesCache(speciesId, updates) {
+  try {
+    // First, get the existing species to preserve fields not being updated
+    const [existing] = await pool.query(
+      'SELECT * FROM species_cache WHERE id = ?',
+      [speciesId]
+    );
+
+    if (!existing.length) {
+      throw new Error(`Species not found with id: ${speciesId}`);
+    }
+
+    const species = existing[0];
+
+    // Merge updates with existing species, preserving existing values for fields not in updates
+    const updatedSpecies = {
+      ...species,
+      ...updates
+    };
+
+    // Use the existing upsertSpecies function to save the updated species
+    await upsertSpecies(updatedSpecies);
+  } catch (error) {
+    throw new Error(`Failed to update species cache: ${error.message}`);
+  }
 }
