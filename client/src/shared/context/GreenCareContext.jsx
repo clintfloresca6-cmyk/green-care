@@ -585,6 +585,17 @@ export function GreenCareProvider({ children }) {
       return settingsPatch
     },
 
+    // Profile actions
+    async updateProfile(profilePatch) {
+      // Update the specific profile fields in the state locally
+      // Handle case where profile might be null (when no auth user)
+      setState(prev => ({
+        ...prev,
+        profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch }
+      }))
+      return profilePatch
+    },
+
     // Event notifications actions
     async addNotification(notification) {
       try {

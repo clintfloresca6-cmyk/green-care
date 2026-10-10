@@ -18,9 +18,9 @@ export function ProfilePage() {
     })
     // Update GreenCare state's profile
     actions.updateProfile({
-      name: form.name.trim() || (state.profile?.name ?? ''),
-      email: form.email.trim() || (state.profile?.email ?? ''),
-      location: form.location.trim() || (state.profile?.location ?? ''),
+      name: (typeof form.name === 'string' ? form.name.trim() : '') || (state.profile?.name ?? ''),
+      email: (typeof form.email === 'string' ? form.email.trim() : '') || (state.profile?.email ?? ''),
+      location: (typeof form.location === 'string' ? form.location.trim() : '') || (state.profile?.location ?? ''),
       photo: form.photo ?? (state.profile?.photo ?? null),
     })
   }

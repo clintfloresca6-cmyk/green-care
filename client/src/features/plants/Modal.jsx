@@ -10,10 +10,10 @@ export function Modal({ preselectPlantId, onClose }) {
         event.preventDefault()
         const formData = Object.fromEntries(new FormData(event.currentTarget))
         const payload = {
-          plant_id: formData.plantId,
-          activity: formData.activity,
-          entry_date: formData.date,
-          notes: formData.notes
+            plant_id: formData.plantId,
+            activity: formData.activity,
+            entry_date: formData.date,
+            notes: formData.notes
         }
         actions.createJournalEntry(payload)
         if (onClose) onClose()

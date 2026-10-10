@@ -1,4 +1,4 @@
-import { fmtDateShort } from '../utils/date.js'
+import { fmtDateShort, todayISO } from '../utils/date.js'
 import { computeTaskStatus, taskIcon } from '../utils/plants.js'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
 import calendarIcon from '../../assets/calendar1.svg'
@@ -15,8 +15,13 @@ export function TaskRow({ task, plant, onEdit }) {
 
     // If task is repeating, create a new instance
     if (task.is_repeating && task.is_repeating > 0) {
-      // Calculate new date by adding repeatDays to current task date
-      const currentDate = new Date(task.date)
+      // Determine the base date for calculating the next occurrence
+      // If task is overdue, use today as the base date; otherwise use the task date
+      const today = todayISO()
+      const baseDate = task.date < today ? today : task.date
+
+      // Calculate new date by adding repeatDays to base date
+      const currentDate = new Date(baseDate)
       const newDate = new Date(currentDate.getTime() + (task.is_repeating * 24 * 60 * 60 * 1000))
       const newDateISO = newDate.toISOString().slice(0, 10)
 
