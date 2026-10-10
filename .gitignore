@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-prototype
+prototype/
 
 
 # Editor directories and files
@@ -26,9 +26,11 @@ prototype
 *.sw?
 client.rar
 *.env
+.claude/
 cls
 *retrieve-data.json
 FEATURE_FLOWCHARTS.md
 FLOWCHART.md
 PROJECT_FLOW.md
 ROUTES_FLOWCHART.md
+memory/

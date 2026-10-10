@@ -3,6 +3,7 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from './Modal.jsx'
+import { EditPlantModal } from './EditPlantModal.jsx'
 import { useState } from 'react'
 import locationIcon from '../../assets/location.svg'
 import waterIcon from '../../assets/water.svg'
@@ -12,6 +13,8 @@ import fertilizerIcon from '../../assets/fertilize.svg'
 export function PlantDetailPage({ plantId }) {
   const { state, actions } = useGreenCare()
   const [modalOpen, setModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const plant = state.plants.find((item) => item.id === plantId)
 
   if (!plant) {
@@ -63,8 +66,8 @@ export function PlantDetailPage({ plantId }) {
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
             <button className="btn btn-primary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.openModal('editPlant', { plantId: plant.id })}>Edit Plant</button>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={() => actions.openModal('confirmArchive', { plantId: plant.id })}>Archive Plant</button>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => setEditModalOpen(true)}>Edit Plant</button>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={() => setArchiveConfirmOpen(true)}>Archive Plant</button>
           </div>
         </div>
       </div>
@@ -132,7 +135,53 @@ export function PlantDetailPage({ plantId }) {
           />
         )
       }
-      
+      {
+        editModalOpen && (
+          <EditPlantModal
+            plantId={plant.id}
+            onClose={() => setEditModalOpen(false)}
+          />
+        )
+      }
+      {
+        archiveConfirmOpen && (
+          <div className="modal-backdrop" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setArchiveConfirmOpen(false);
+          }}>
+            <div className="modal">
+              <div className="modal-head">
+                <h3>Confirm Archive</h3>
+                <button className="icon-btn" type="button" onClick={() => setArchiveConfirmOpen(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to archive this plant? It will be moved out of My Plants.</p>
+              </div>
+              <div className="modal-actions" style={{ padding: '20px' }}>
+                <button className="btn btn-secondary" type="button" onClick={() => setArchiveConfirmOpen(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  type="submit"
+                  onClick={async () => {
+                    try {
+                      await actions.archivePlant(plant.id);
+                      setArchiveConfirmOpen(false);
+                      goTo('plants');
+                    } catch (err) {
+                      console.error('Failed to archive plant:', err);
+                      // In a real app, you might show an error message
+                    }
+                  }}
+                >
+                  Archive Plant
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
     </section>
   )
 }

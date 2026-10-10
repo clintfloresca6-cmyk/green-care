@@ -126,7 +126,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
   }, [defaultFertilizing]);
 
   return (
-    <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', margin: 'auto' }}>
+    <div className="modal" style={{ display: 'flex', flexDirection: 'column', margin: 'auto', overflow: 'auto', maxHeight: '90vh', scrollbarWidth: 'none' }}>
       <div className="modal-head">
         <h3>Add a Plant</h3>
         <button className="icon-btn" onClick={onClose}>×</button>
