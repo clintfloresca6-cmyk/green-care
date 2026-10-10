@@ -1,11 +1,14 @@
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { daysBetween, fmtDate, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus } from '../../shared/utils/plants.js'
+import { useState } from 'react'
+import { Modal } from './Modal.jsx'
 
 const activityTypes = ['Watered', 'Fertilized', 'Pruned', 'Repotted', 'Cleaned', 'Checked Health']
 
 export function ReportsPage() {
   const { state } = useGreenCare()
+  const [reportModalOpen, setReportModalOpen] = useState(false)
   const completed = state.tasks.filter((task) => task.status === 'completed').length
   const overdue = state.tasks.filter((task) => computeTaskStatus(task) === 'overdue').length
   const pending = Math.max(state.tasks.filter((task) => task.status === 'pending').length - overdue, 0)
@@ -19,7 +22,15 @@ export function ReportsPage() {
 
   return (
     <section className="page active">
-      <div className="page-head"><div><h1>Reports</h1><p className="muted">A look at how your plant care is trending.</p></div></div>
+      <div className="page-head">
+        <div>
+          <h1>Reports</h1>
+          <p className="muted">A look at how your plant care is trending.</p>
+        </div>
+        <button className="btn btn-primary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setReportModalOpen(true)}>
+          Report an Issue
+        </button>
+      </div>
       <div className="reports-grid">
         <div className="card">
           <div className="card-head"><h3>Monthly Care Activity</h3></div>
@@ -60,6 +71,12 @@ export function ReportsPage() {
           </div>
         </div>
       </div>
+
+      {reportModalOpen && (
+        <Modal
+          onClose={() => setReportModalOpen(false)}
+        />
+      )}
     </section>
   )
 }

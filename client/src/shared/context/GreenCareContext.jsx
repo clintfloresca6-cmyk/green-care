@@ -11,7 +11,7 @@ const HEALTH_ISSUES = {
   Pests: { causes: ['Poor air circulation', 'Overwatering', 'Nearby infested plants'], tips: ['Isolate the affected plant', 'Wipe leaves with diluted neem oil', 'Improve airflow around the plant'] },
   'Brown Leaves': { causes: ['Low humidity', 'Mineral buildup from tap water', 'Sunburn'], tips: ['Increase humidity with a tray or misting', 'Use filtered or rested water', 'Move out of direct harsh sun'] },
   Overwatering: { causes: ['Watering on a fixed schedule', 'Poor drainage', 'Pot without drainage holes'], tips: ['Let soil dry before watering again', 'Ensure pots have drainage holes', 'Repot in well-draining soil if needed'] },
-  Underwatering: { causes: ['Forgetting scheduled waterings', 'Fast-draining soil mix', 'Low humidity environment'], tips: ['Set reminders for consistent watering', 'Water deeply until it drains out the bottom', 'Group plants to raise local humidity'] },
+  Underwatering: { causes: ['Forgetting scheduled waterings', 'Fast-draining soil mix', 'Low humidity environment'], tips: ['Set reminders for consistent watering', 'Water deeply until it drains out the bottom', 'Group plants to raise local humidity'] }
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ export function GreenCareProvider({ children }) {
         // Fetch admin reports (only for admins)
         let adminReports = []
         if (authUser.role === 'admin') {
-          const adminData = await authFetch('/admin')
+          const adminData = await authFetch('/admin/reports') // assuming endpoint for admin reports
           adminReports = adminData.data || []
         }
 
@@ -137,11 +137,11 @@ export function GreenCareProvider({ children }) {
         const activity = [
           ...recentJournal.map(entry => ({
             text: entry.activity,
-            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } )
           })),
           ...recentTasks.map(task => ({
             text: `${task.type} ${task.plant_id ? '(for plant)' : ''}`,
-            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } )
           }))
         ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8)
 
@@ -593,6 +593,7 @@ export function GreenCareProvider({ children }) {
         ...prev,
         profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch }
       }))
+      console.log( profilePatch)
       return profilePatch
     },
 
@@ -607,6 +608,22 @@ export function GreenCareProvider({ children }) {
         return notification
       } catch (error) {
         console.error('Failed to add notification:', error)
+        throw error
+      }
+    },
+
+    // Report actions
+    async createReport(payload) {
+      try {
+        const result = await authFetch('/reports', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+        // Optionally update adminReports state if we want to show them immediately
+        // For now, we just return the result
+        return result.data
+      } catch (error) {
+        console.error('Failed to create report:', error)
         throw error
       }
     }

@@ -7,6 +7,7 @@ import notificationsRoutes from './notifications.routes.js'
 import libraryRoutes from './library.routes.js'
 import adminRoutes from './admin.routes.js'
 import trefleRoutes from './trefle.routes.js'
+import reportRoutes from './report.routes.js'
 
 export const routes = Router()
 
@@ -18,3 +19,4 @@ routes.use('/notifications', notificationsRoutes)
 routes.use('/library', libraryRoutes)
 routes.use('/admin', adminRoutes)
 routes.use('/trefle', trefleRoutes)
+routes.use('/reports', reportRoutes)
