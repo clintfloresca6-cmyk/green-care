@@ -12,4 +12,7 @@ export const env = {
   TREFLE_BASE_URL: process.env.TREFLE_BASE_URL ?? 'https://trefle.io/api/v1',
   TREFLE_TOKEN: process.env.TREFLE_TOKEN ?? '',
   TREFLE_CACHE_TTL_DAYS: Number(process.env.TREFLE_CACHE_TTL_DAYS ?? 7),
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
+  IMGBB_API_KEY: process.env.IMGBB_API_KEY ?? '',
+  SESSION_SECRET: process.env.SESSION_SECRET ?? 'greencare-session-secret-key-change-in-production',
 }

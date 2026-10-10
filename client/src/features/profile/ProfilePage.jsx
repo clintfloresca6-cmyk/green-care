@@ -7,22 +7,54 @@ export function ProfilePage() {
   const { state, actions } = useGreenCare()
   const { currentUser, updateUserProfile: updateAuthUser } = useAuth()
   const [form, setForm] = useState(currentUser ? currentUser : (state.profile ?? { name: '', email: '', location: '', photo: null }))
+  const [photoFile, setPhotoFile] = useState(null)
 
-  function save() {
+  // Convert File to base64 string
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
+        const base64 = reader.result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
+  async function save() {
+    let photoToUpload = form.photo
+
+    // If we have a selected file, convert it to base64 for upload
+    if (photoFile) {
+      try {
+        const base64Image = await fileToBase64(photoFile)
+        photoToUpload = base64Image // Send base64 to backend for ImgBB upload
+      } catch (error) {
+        console.error('Error converting image to base64:', error)
+        // If conversion fails, we'll use the existing photo
+        photoToUpload = form.photo
+      }
+    }
+
     // Update auth user
     updateAuthUser({
       name: form.name,
       email: form.email,
       location: form.location,
-      photo: form.photo,
+      photo: photoToUpload,
     })
     // Update GreenCare state's profile
     actions.updateProfile({
       name: (typeof form.name === 'string' ? form.name.trim() : '') || (state.profile?.name ?? ''),
       email: (typeof form.email === 'string' ? form.email.trim() : '') || (state.profile?.email ?? ''),
       location: (typeof form.location === 'string' ? form.location.trim() : '') || (state.profile?.location ?? ''),
-      photo: form.photo ?? (state.profile?.photo ?? null),
+      photo: photoToUpload ?? (state.profile?.photo ?? null),
     })
+
+    // Reset photoFile state on success
+    setPhotoFile(null)
   }
 
   function update(field, value) {
@@ -38,7 +70,15 @@ export function ProfilePage() {
           <div>
             <label className="btn btn-secondary">
               Change photo
-              <input type="file" accept="image/*" hidden onChange={(event) => readFile(event.currentTarget.files?.[0]).then((photo) => update('photo', photo))} />
+              <input type="file" accept="image/*" hidden onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) {
+                  setPhotoFile(file)
+                  const reader = new FileReader()
+                  reader.onload = () => update('photo', URL.createObjectURL(file))
+                  reader.readAsDataURL(file)
+                }
+              }} />
             </label>
           </div>
         </div>
@@ -51,13 +91,4 @@ export function ProfilePage() {
       </div>
     </section>
   )
-}
-
-function readFile(file) {
-  if (!file) return Promise.resolve(null)
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.readAsDataURL(file)
-  })
 }

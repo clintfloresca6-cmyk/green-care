@@ -5,18 +5,67 @@ import { todayISO } from '../../shared/utils/date.js'
 export function Modal({ preselectPlantId, onClose }) {
     const { state, actions } = useGreenCare()
     const [photo, setPhoto] = useState(null)
+    const [photoFile, setPhotoFile] = useState(null)
+    const [isSaving, setIsSaving] = useState(false)
 
-    function submit(event) {
+    // Convert File to base64 string
+    const fileToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = () => {
+                // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
+                const base64 = reader.result.split(',')[1]
+                resolve(base64)
+            }
+            reader.onerror = (error) => reject(error)
+        })
+    }
+
+    async function submit(event) {
         event.preventDefault()
         const formData = Object.fromEntries(new FormData(event.currentTarget))
+
+        // Prepare data for submission
+        let photoUrl = null
+
+        // If we have a selected file, convert it to base64 for upload
+        if (photoFile) {
+            try {
+                const base64Image = await fileToBase64(photoFile)
+                photoUrl = base64Image // Send base64 to backend for ImgBB upload
+            } catch (error) {
+                console.error('Error converting image to base64:', error)
+                // If conversion fails, we won't include a photo
+                photoUrl = null
+            }
+        }
+
         const payload = {
           plant_id: formData.plantId,
           activity: formData.activity,
           entry_date: formData.date,
-          notes: formData.notes
+          notes: formData.notes,
+          photo: photoUrl // Include photo (either base64 for upload or null)
         }
-        actions.createJournalEntry(payload)
-        if (onClose) onClose()
+
+        setIsSaving(true)
+        try {
+          await actions.createJournalEntry(payload)
+          // Reset photoFile state on success
+          setPhotoFile(null)
+          // Show success toast
+          const selectedPlant = state.plants.find(p => p.id === formData.plantId)
+          const plantName = selectedPlant ? selectedPlant.name : 'a plant'
+          actions.toast(`Successfully Added ${formData.activity} for ${plantName}`)
+        } catch (error) {
+          console.error('Failed to create journal entry:', error)
+          // Optionally show error toast
+          actions.toast('Failed to add journal entry. Please try again.')
+        } finally {
+          setIsSaving(false)
+          if (onClose) onClose()
+        }
     }
 
     return (
@@ -65,8 +114,9 @@ export function Modal({ preselectPlantId, onClose }) {
                         <input type="file" accept="image/*" onChange={(event) => {
                             const file = event.target.files?.[0]
                             if (file) {
+                                setPhotoFile(file)
                                 const reader = new FileReader()
-                                reader.onload = () => setPhoto(reader.result)
+                                reader.onload = () => setPhoto(URL.createObjectURL(file))
                                 reader.readAsDataURL(file)
                             }
                         }} />
@@ -77,7 +127,9 @@ export function Modal({ preselectPlantId, onClose }) {
                             actions.closeModal()
                             if (onClose) onClose()
                         }}>Cancel</button>
-                        <button className="btn btn-primary" type="submit">Save Entry</button>
+                        <button className="btn btn-primary" type="submit" disabled={isSaving}>
+                            {isSaving ? 'Saving...' : 'Save Entry'}
+                        </button>
                     </div>
                 </form>
             </div>

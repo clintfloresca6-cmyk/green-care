@@ -5,6 +5,7 @@ import { todayISO } from '../../shared/utils/date.js';
 export function EditPlantModal({ plantId, onClose }) {
   const { state, actions } = useGreenCare();
   const [photo, setPhoto] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [name, setName] = useState('');
@@ -33,6 +34,20 @@ export function EditPlantModal({ plantId, onClose }) {
         }
 
         // Prepare data for submission (PATCH)
+        let photoUrl = photo || null; // Default to the preview URL or null
+
+        // If we have a selected file, convert it to base64 for upload
+        if (photoFile) {
+          try {
+            const base64Image = await fileToBase64(photoFile);
+            photoUrl = base64Image; // Send base64 to backend for ImgBB upload
+          } catch (error) {
+            console.error('Error converting image to base64:', error);
+            // Fall back to using the preview URL if base64 conversion fails
+            photoUrl = photo || null;
+          }
+        }
+
         const plantData = {
           name: data.name.trim(),
           speciesName: data.species.trim(),
@@ -42,7 +57,7 @@ export function EditPlantModal({ plantId, onClose }) {
           watering: data.watering || null,
           fertilizing: data.fertilizing || null,
           notes: data.notes || null,
-          photo: photo || null,
+          photo: photoUrl, // Include photo (either base64 for upload or preview URL)
         };
 
         // Remove null values to avoid overwriting with null
@@ -62,6 +77,7 @@ export function EditPlantModal({ plantId, onClose }) {
         // Reset form on success
         setError('');
         setPhoto(null);
+        setPhotoFile(null);
         setProcessing(false);
         onClose && onClose();
       } catch (err) {
@@ -73,8 +89,24 @@ export function EditPlantModal({ plantId, onClose }) {
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setPhoto(URL.createObjectURL(e.target.files[0]));
+      const file = e.target.files[0];
+      setPhotoFile(file);
+      setPhoto(URL.createObjectURL(file));
     }
+  };
+
+  // Convert File to base64 string
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   // Get the plant data for pre-filling the form

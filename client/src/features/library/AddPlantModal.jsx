@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultSpeciesId = null, defaultPhoto = null, defaultLight = '', defaultWatering = '', defaultFertilizing = '' }) {
   const [photo, setPhoto] = useState(defaultPhoto);
+  const [photoFile, setPhotoFile] = useState(null);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [species, setSpecies] = useState(defaultSpecies || '');
@@ -19,27 +20,48 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
       setProcessing(true);
       setError('');
       try {
-        const formData = new FormData(e.currentTarget);
-        const data = Object.fromEntries(formData);
+        // Get form values manually to properly handle file input
+        const form = e.currentTarget;
+        const name = form.elements.name.value.trim();
+        const species = form.elements.species.value.trim();
+        const location = form.elements.location.value.trim() || null;
+        const light = form.elements.light.value || null;
+        const watering = form.elements.watering.value || null;
+        const fertilizing = form.elements.fertilizing.value || null;
+        const notes = form.elements.notes.value.trim() || null;
 
         // Validate required fields
-        if (!data.name.trim() || !data.species.trim()) {
+        if (!name || !species) {
           setError('Please give your plant a name and a species before saving.');
           setProcessing(false);
           return;
         }
 
         // Prepare data for submission
+        let photoUrl = photo || null; // Default to the preview URL or null
+
+        // If we have a selected file, convert it to base64 for upload
+        if (photoFile) {
+          try {
+            const base64Image = await fileToBase64(photoFile);
+            photoUrl = base64Image; // Send base64 to backend for ImgBB upload
+          } catch (error) {
+            console.error('Error converting image to base64:', error);
+            // Fall back to using the preview URL if base64 conversion fails
+            photoUrl = photo || null;
+          }
+        }
+
         const plantData = {
-          name: data.name.trim(),
-          speciesName: data.species.trim(),
-          speciesId: speciesId,
-          location: data.location || null,
-          light: data.light || null,
-          watering: data.watering || null,
-          fertilizing: data.fertilizing || null,
-          notes: data.notes || null,
-          photo: photo || null, // Include photo (either uploaded or default)
+          name,
+          speciesName: species,
+          speciesId,
+          location,
+          light,
+          watering,
+          fertilizing,
+          notes,
+          photo: photoUrl, // Include photo (either base64 for upload or preview URL)
         };
 
         console.log('Submitting plant data:', plantData);
@@ -54,6 +76,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
         // Reset form on success
         setError('');
         setPhoto(null);
+        setPhotoFile(null);
         setProcessing(false);
         onClose && onClose();
       } catch (err) {
@@ -65,8 +88,24 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setPhoto(URL.createObjectURL(e.target.files[0]));
+      const file = e.target.files[0];
+      setPhotoFile(file);
+      setPhoto(URL.createObjectURL(file));
     }
+  };
+
+  // Convert File to base64 string
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   // Set species from prop when it changes (but only if not already set by user)

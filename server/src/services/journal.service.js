@@ -1,6 +1,8 @@
 import { pool } from '../config/db.js'
 import { ApiError } from '../utils/ApiError.js'
 import { randomUUID } from 'node:crypto'
+import { uploadImageToImgbb } from './image-upload.service.js'
+import { env } from '../config/env.js'
 
 export async function listForUser(userId, { plantId } = {}) {
   const where = ['user_id = ?']
@@ -30,6 +32,28 @@ export async function createForUser(userId, payload) {
     if (!owned.length) throw new ApiError(404, 'Plant not found')
   }
 
+  // Handle image upload if photo is provided as base64
+  let photoUrl = payload.photo ?? null;
+
+  if (payload.photo && typeof payload.photo === 'string') {
+    // If photo is a base64 string, upload to ImgBB
+    try {
+      // Remove data URL prefix if present (e.g., 'data:image/jpeg;base64,')
+      let base64Image = payload.photo;
+      if (base64Image.includes('base64,')) {
+        base64Image = base64Image.split('base64,')[1];
+      }
+
+      const uploadResult = await uploadImageToImgbb(base64Image, env.IMGBB_API_KEY);
+      photoUrl = uploadResult.url;
+    } catch (error) {
+      console.error('Error uploading image to ImgBB:', error);
+      // If upload fails, we can either proceed without the photo or throw an error
+      // For now, we'll proceed without the photo to avoid breaking the flow
+      photoUrl = null;
+    }
+  }
+
   const id = randomUUID().replace(/-/g, '').slice(0, 26)
   await pool.query(
     `INSERT INTO journal_entries
@@ -42,7 +66,7 @@ export async function createForUser(userId, payload) {
       payload.activity,
       payload.entry_date,
       payload.notes ?? null,
-      payload.photo_url ?? null,
+      photoUrl,
     ],
   )
 

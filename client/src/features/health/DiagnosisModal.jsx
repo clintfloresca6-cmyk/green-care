@@ -6,13 +6,28 @@ import warningIcon from '../../assets/warning.svg'
 export function DiagnosisModal({ preselectPlantId, onClose }) {
     const { state, actions } = useGreenCare()
     const [photo, setPhoto] = useState(null)
+    const [photoFile, setPhotoFile] = useState(null)
     const [phase, setPhase] = useState('idle')
     const [result, setResult] = useState(null)
     const [error, setError] = useState(null)
     const [barWidth, setBarWidth] = useState(0)
     const [selectedPlantId, setSelectedPlantId] = useState(preselectPlantId || (state.plants[0]?.id ?? null))
 
-    // Mock function to convert file to data URL
+    // Convert File to base64 string
+    const fileToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = () => {
+                // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
+                const base64 = reader.result.split(',')[1]
+                resolve(base64)
+            }
+            reader.onerror = (error) => reject(error)
+        })
+    }
+
+    // Mock function to convert file to data URL (kept for backward compatibility)
     const readFile = (file) => {
         if (!file) return Promise.resolve(null)
         return new Promise((resolve) => {
@@ -23,15 +38,15 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
     }
 
     // Analyze image using the backend endpoint
-    const analyzeImageWithBackend = async (dataUrl) => {
-        // Send the data URL as the image field (backend will strip the data URL prefix if present)
+    const analyzeImageWithBackend = async (base64Image) => {
+        // Send the base64 image as the image field (backend will upload to ImgBB)
         const response = await fetch(`${import.meta.env.VITE_API_URL}/plants/analyze-image`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({ image: dataUrl })
+            body: JSON.stringify({ image: base64Image })
         })
 
         if (!response.ok) {
@@ -43,8 +58,8 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
         return data.result
     }
 
-    function analyze() {
-        if (!photo) return
+    async function analyze() {
+        if (!photoFile) return
 
         setPhase('loading')
         setBarWidth(0)
@@ -53,19 +68,20 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
         // Simulate progress
         window.setTimeout(() => setBarWidth(100), 50)
 
-        // Actually analyze the image via backend
-        analyzeImageWithBackend(photo)
-            .then((analysisResult) => {
-                setResult(analysisResult)
-                setPhase('done')
-            })
-            .catch((err) => {
-                setError(err.message || 'Failed to analyze image')
-                setPhase('error')
-            })
-            .finally(() => {
-                window.setTimeout(() => setBarWidth(0), 100)
-            })
+        try {
+            // Convert the selected file to base64 for upload
+            const base64Image = await fileToBase64(photoFile)
+
+            // Actually analyze the image via backend
+            const analysisResult = await analyzeImageWithBackend(base64Image)
+            setResult(analysisResult)
+            setPhase('done')
+        } catch (err) {
+            setError(err.message || 'Failed to analyze image')
+            setPhase('error')
+        } finally {
+            window.setTimeout(() => setBarWidth(0), 100)
+        }
     }
 
     function retry() {
@@ -73,14 +89,30 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
         setResult(null)
         setError(null)
         setPhoto(null)
+        setPhotoFile(null)
     }
 
-    function updateHealth() {
+    async function updateHealth() {
         if (!result || result === "The image must be plant") return
+
+        let photoToUpload = null
+
+        // If we have a selected file, convert it to base64 for upload
+        if (photoFile) {
+            try {
+                const base64Image = await fileToBase64(photoFile)
+                photoToUpload = base64Image // Send base64 to backend for ImgBB upload
+            } catch (error) {
+                console.error('Error converting image to base64:', error)
+                // If conversion fails, we won't include a photo
+                photoToUpload = null
+            }
+        }
+
         // Update the plant's health and photo (the uploaded image)
         actions.updatePlant(selectedPlantId, {
             health: result,
-            photo: photo // photo is the data URL from the upload
+            photo: photoToUpload
         })
         // Create journal entry for health check
         try {
@@ -119,6 +151,7 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
         setPhase('idle')
         setResult(null)
         setPhoto(null)
+        setPhotoFile(null)
     }
 
     return (
@@ -154,10 +187,18 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
                         <>
                             <label className="dropzone">
                                 {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
-                                <input type="file" accept="image/*" hidden onChange={(event) => readFile(event.currentTarget.files?.[0]).then(setPhoto)} />
+                                <input type="file" accept="image/*" hidden onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) {
+                                        setPhotoFile(file);
+                                        const reader = new FileReader();
+                                        reader.onload = () => setPhoto(URL.createObjectURL(file));
+                                        reader.readAsDataURL(file);
+                                    }
+                                }} />
                             </label>
                             <div className="modal-actions">
-                                <button className="btn btn-primary" type="button" disabled={!photo} onClick={analyze}>Analyze Plant</button>
+                                <button className="btn btn-primary" type="button" disabled={!photoFile} onClick={analyze}>Analyze Plant</button>
                                 <button className="btn btn-secondary" type="button" onClick={() => {
                                     retry();
                                     if (onClose) onClose();
