@@ -301,7 +301,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
             />
             {photo && (
               <div className="photo-preview">
-                <img src={photo} alt="Preview" style={{ maxWidth: '100%', height: 'auto' }} />
+                <img src={photo} alt="Preview" style={{ maxWidth: '100%', height: '100%' }} />
               </div>
             )}
           </div>

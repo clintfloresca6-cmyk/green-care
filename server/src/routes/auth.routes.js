@@ -3,7 +3,7 @@ import { Router } from 'express'
 import * as authController from '../controllers/auth.controller.js'
 import { currentUser, requireUser } from '../middleware/currentUser.js'
 import { validate } from '../middleware/validate.middleware.js'
-import { loginSchema, signupSchema } from '../validators/auth.validator.js'
+import { loginSchema, signupSchema, updateUserSchema } from '../validators/auth.validator.js'
 
 const router = Router()
 
@@ -17,7 +17,7 @@ router.get('/me', currentUser, authController.me)
 router.use(currentUser, requireUser)
 router.get('/', authController.list)
 router.get('/:id', authController.get)
-router.patch('/:id', validate(signupSchema), authController.update)
+router.patch('/:id', validate(updateUserSchema), authController.update)
 router.delete('/:id', authController.archive)
 
 export default router

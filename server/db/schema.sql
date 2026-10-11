@@ -269,6 +269,27 @@ CREATE TABLE notifications (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+--  7b. PUSH SUBSCRIPTIONS  (Web Push / VAPID)
+-- ============================================================
+
+DROP TABLE IF EXISTS push_subscriptions;
+CREATE TABLE push_subscriptions (
+  id            VARCHAR(32)  NOT NULL,
+  user_id       VARCHAR(32)  NOT NULL,
+  endpoint      VARCHAR(512) NOT NULL,
+  p256dh        VARCHAR(255) NOT NULL,
+  auth          VARCHAR(255) NOT NULL,
+  user_agent    VARCHAR(255) NULL,
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_push_endpoint (endpoint(255)),
+  KEY idx_push_user (user_id),
+  CONSTRAINT fk_push_sub_user FOREIGN KEY (user_id)
+    REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
 --  8. ACTIVITY FEED  (Dashboard “Recent Activity”)
 -- ============================================================
 

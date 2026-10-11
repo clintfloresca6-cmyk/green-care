@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import * as notificationsService from '../services/notifications.service.js'
 import { pool } from '../config/db.js'
 import { randomUUID } from 'node:crypto'
+import * as pushService from '../services/push.service.js'
 
 export const list = asyncHandler(async (req, res) => {
   const items = await notificationsService.listForUser(req.user.id)
@@ -21,19 +22,31 @@ export const get = asyncHandler(async (req, res) => {
 })
 
 export const create = asyncHandler(async (req, res) => {
-  // Since there's no create function in the service, we'll implement a basic one
-  // Assuming notifications have: user_id, message, notice_date (optional)
-  const { message, notice_date } = req.body
-  const id = randomUUID().replace(/-/g, '').slice(0, 26)
+  const created = await notificationsService.createForUser(req.user.id, {
+    text:        req.body.text ?? req.body.message ?? 'Notification',
+    icon:        req.body.icon,
+    notice_date: req.body.notice_date,
+    page:        req.body.page,
+    plantId:     req.body.plantId,
+  })
+  res.status(201).json({ data: created })
+})
 
-  await pool.query(
-    `INSERT INTO notifications (id, user_id, message, notice_date, is_read, created_at)
-     VALUES (?, ?, ?, ?, 0, NOW())`,
-    [id, req.user.id, message || 'Notification', notice_date || null]
-  )
+export const getVapidPublicKey = asyncHandler(async (_req, res) => {
+  res.json({ data: { publicKey: pushService.getPublicKey() } })
+})
 
-  const [rows] = await pool.query('SELECT * FROM notifications WHERE id = ?', [id])
-  res.status(201).json({ data: rows[0] })
+export const subscribePush = asyncHandler(async (req, res) => {
+  const { subscription } = req.body
+  if (!subscription) return res.status(400).json({ error: 'subscription is required' })
+  await pushService.saveSubscription(req.user.id, subscription, req.headers['user-agent'] || null)
+  res.status(204).end()
+})
+
+export const unsubscribePush = asyncHandler(async (req, res) => {
+  const { endpoint } = req.body
+  await pushService.removeSubscription(req.user.id, endpoint)
+  res.status(204).end()
 })
 
 export const update = asyncHandler(async (req, res) => {

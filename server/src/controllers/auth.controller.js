@@ -1,6 +1,8 @@
 import { asyncHandler } from '../utils/asyncHandler.js'
 import * as authService from '../services/auth.service.js'
 import { pool } from '../config/db.js'
+import { uploadImageToImgbb } from '../services/image-upload.service.js'
+import { env } from '../config/env.js'
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body
@@ -13,7 +15,8 @@ export const login = asyncHandler(async (req, res) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    photo_url: user.photo_url
+    photo_url: user.photo_url,
+    location: user.location,
   }
 
   // Explicitly save session to ensure it's persisted
@@ -38,6 +41,7 @@ export const signup = asyncHandler(async (req, res) => {
 
 export const list = asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT id, name, email, role, photo_url, location, created_at FROM users')
+  console.log({ data: rows })
   res.json({ data: rows })
 })
 
@@ -58,10 +62,65 @@ export const create = asyncHandler(async (req, res) => {
 })
 
 export const update = asyncHandler(async (req, res) => {
-  const { name, email } = req.body
+  const { name, email, location, photo, photo_url } = req.body
+
+  // Handle photo upload if provided as base64 string
+  let finalPhotoUrl = photo_url
+  if (photo && typeof photo === 'string') {
+    // If photo is a base64 string, upload to ImgBB
+    try {
+      // Remove data URL prefix if present (e.g., 'data:image/jpeg;base64,')
+      let base64Image = photo
+      if (base64Image.includes('base64,')) {
+        base64Image = base64Image.split('base64,')[1]
+      }
+
+      const uploadResult = await uploadImageToImgbb(base64Image, env.IMGBB_API_KEY)
+      finalPhotoUrl = uploadResult.url
+    } catch (error) {
+      console.error('Error uploading image to ImgBB:', error)
+      // If upload fails, we can either proceed without the photo or keep existing
+      // For now, we'll keep the existing photo_url if provided, otherwise null
+      finalPhotoUrl = photo_url
+    }
+  }
+
+  // Build update query dynamically to only update provided fields
+  const updates = []
+  const values = []
+
+  if (name !== undefined) {
+    updates.push('name = ?')
+    values.push(name.trim())
+  }
+
+  if (email !== undefined) {
+    updates.push('email = ?')
+    values.push(email.toLowerCase())
+  }
+
+  if (location !== undefined) {
+    updates.push('location = ?')
+    values.push(location.trim())
+  }
+
+  if (finalPhotoUrl !== undefined) {
+    updates.push('photo_url = ?')
+    values.push(finalPhotoUrl)
+  }
+
+  if (updates.length === 0) {
+    // No fields to update
+    const [rows] = await pool.query('SELECT id, name, email, role, photo_url, location, created_at FROM users WHERE id = ?', [req.params.id])
+    res.json({ data: rows[0] })
+    return
+  }
+
+  values.push(req.params.id)
+
   const [result] = await pool.query(
-    'UPDATE users SET name = ?, email = ? WHERE id = ?',
-    [name.trim(), email.toLowerCase(), req.params.id]
+    `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+    values
   )
 
   if (result.affectedRows === 0) {
@@ -70,6 +129,21 @@ export const update = asyncHandler(async (req, res) => {
   }
 
   const [rows] = await pool.query('SELECT id, name, email, role, photo_url, location, created_at FROM users WHERE id = ?', [req.params.id])
+
+  if (req.session.user && req.session.user.id === req.params.id) {
+  req.session.user = {
+    id: rows[0].id,
+    name: rows[0].name,
+    email: rows[0].email,
+    role: rows[0].role,
+    photo_url: rows[0].photo_url,
+    location: rows[0].location,
+  }
+  await new Promise((resolve, reject) =>
+    req.session.save(err => err ? reject(err) : resolve())
+  )
+}
+
   res.json({ data: rows[0] })
 })
 

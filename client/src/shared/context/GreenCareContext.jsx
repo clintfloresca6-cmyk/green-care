@@ -77,7 +77,8 @@ export function GreenCareProvider({ children }) {
         name: authUser.name,
         email: authUser.email,
         role: authUser.role,
-        photo: authUser.photo || null,
+        photo: authUser.photo_url || null,
+        location: authUser.location ?? '',
       },
       settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: getStoredTheme(), reminderTime: '08:00', weekStart: 'mon' },
       activity: [],
@@ -139,11 +140,11 @@ export function GreenCareProvider({ children }) {
         const activity = [
           ...recentJournal.map(entry => ({
             text: entry.activity,
-            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } )
+            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
           })),
           ...recentTasks.map(task => ({
             text: `${task.type} ${task.plant_id ? '(for plant)' : ''}`,
-            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } )
+            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
           }))
         ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8)
 
@@ -615,23 +616,18 @@ export function GreenCareProvider({ children }) {
         ...prev,
         profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch }
       }))
-      console.log( profilePatch)
+      console.log(profilePatch)
       return profilePatch
     },
 
     // Event notifications actions
     async addNotification(notification) {
-      try {
-        // Add notification to state
-        setState(prev => ({
-          ...prev,
-          notifications: [...prev.notifications, notification]
-        }))
-        return notification
-      } catch (error) {
-        console.error('Failed to add notification:', error)
-        throw error
-      }
+      const result = await authFetch('/notifications', {
+        method: 'POST',
+        body: JSON.stringify(notification),
+      })
+      setState(prev => ({ ...prev, notifications: [...prev.notifications, result.data] }))
+      return result.data
     },
 
     // Report actions
@@ -671,6 +667,41 @@ export function GreenCareProvider({ children }) {
     }
   }, [state.settings.theme])
 
+    // Bridge service worker push messages into the app's toast system.
+  // The SW posts { type: 'PUSH_RECEIVED', title, body } when a push
+  // arrives while the tab is open; we surface it as a toast and refresh
+  // the notification list so the new DB row shows up immediately.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+
+    function onMessage(event) {
+      if (event.data?.type !== 'PUSH_RECEIVED') return
+      setState(prev => {
+        const toast = {
+          id: Date.now() + Math.random(),
+          message: event.data.body || event.data.title || 'New notification',
+        }
+        return { ...prev, toasts: [...prev.toasts, toast] }
+      })
+      setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          toasts: prev.toasts.slice(1),
+        }))
+      }, 3000)
+
+      // Pull the fresh list from the server so the badge count and list update
+      authFetch('/notifications')
+        .then((res) => {
+          setState(prev => ({ ...prev, notifications: res.data || [] }))
+        })
+        .catch(() => {})
+    }
+
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [])
+  
   const isAuthenticated = Boolean(authUser)
 
   return (

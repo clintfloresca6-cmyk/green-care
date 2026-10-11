@@ -15,4 +15,7 @@ export const env = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
   IMGBB_API_KEY: process.env.IMGBB_API_KEY ?? '',
   SESSION_SECRET: process.env.SESSION_SECRET ?? 'greencare-session-secret-key-change-in-production',
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT ?? '',
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY ?? '',
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY ?? '',
 }

@@ -8,6 +8,9 @@ import { notificationIdParamSchema } from '../validators/notification.validator.
 const router = Router()
 router.use(currentUser, requireUser)
 
+router.get('/push/vapid-public-key', notificationController.getVapidPublicKey)
+router.post('/push/subscribe',       notificationController.subscribePush)
+router.delete('/push/subscribe',     notificationController.unsubscribePush)
 router.get('/', notificationController.list)
 router.get('/:id', notificationController.get)
 router.post('/', notificationController.create)

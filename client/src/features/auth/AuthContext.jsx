@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState, useEffect } from 'react'
+import { subscribeToPush, unsubscribeFromPush } from '../../shared/utils/push.js'
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const AuthContext = createContext(null)
@@ -27,6 +28,7 @@ export function AuthProvider({ children }) {
             email: userData.data.email,
             role: userData.data.role,
             photo: userData.data.photo_url || null,
+            location: userData.data.location || null,
           }
           setCurrentUser(session)
         } else {
@@ -42,6 +44,11 @@ export function AuthProvider({ children }) {
 
     checkAuthStatus()
   }, [])
+
+  useEffect(() => {
+    if (!currentUser) return
+    subscribeToPush().catch((err) => console.warn('[push] subscribe failed:', err))
+  }, [currentUser])
 
   const login = useCallback(async (email, password) => {
     try {
@@ -66,6 +73,7 @@ export function AuthProvider({ children }) {
         email: userData.data.email,
         role: userData.data.role,
         photo: userData.data.photo_url || null,
+        location: userData.data.location ?? null,
       }
 
       setCurrentUser(session)
@@ -98,6 +106,7 @@ export function AuthProvider({ children }) {
         email: userData.data.email,
         role: userData.data.role,
         photo: userData.data.photo_url || null,
+        location: null,
       }
 
       setCurrentUser(session)
@@ -108,22 +117,47 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
-  try {
-    await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-  } finally {
-    setCurrentUser(null)
-  }
-}, [])
-
-  const updateUserProfile = useCallback((patch) => {
-    setCurrentUser((prev) => {
-      const updated = { ...prev, ...patch }
-      return updated
-    })
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } finally {
+      setCurrentUser(null)
+    }
   }, [])
+
+  const updateUserProfile = useCallback(async (patch) => {
+    if (!currentUser) {
+      throw new Error('No authenticated user');
+    }
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/${currentUser.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(patch),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update profile');
+    }
+
+    const updatedUser = await response.json();
+    // Assuming the backend returns { data: user }
+    const userData = updatedUser.data;
+    setCurrentUser({
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      photo: userData.photo_url || null,
+      location: userData.location ?? null,
+    });
+    return userData;
+  }, [currentUser])
 
   const isAuthenticated = !checkingAuth && Boolean(currentUser)
 

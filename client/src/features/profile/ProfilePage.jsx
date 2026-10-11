@@ -1,14 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Avatar } from '../../shared/components/Avatar.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 
+// Initialize form with proper defaults to prevent uncontrolled input warnings
+const initialForm = {
+  name: '',
+  email: '',
+  location: '',
+  photo: null
+}
+
 export function ProfilePage() {
   const { state, actions } = useGreenCare()
   const { currentUser, updateUserProfile: updateAuthUser } = useAuth()
-  const [form, setForm] = useState(currentUser ? currentUser : (state.profile ?? { name: '', email: '', location: '', photo: null }))
-  const [photoFile, setPhotoFile] = useState(null)
 
+  const [form, setForm] = useState(initialForm)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const source = currentUser ?? state.profile
+    if (!source) return
+    setForm({
+      name: source.name ?? '',
+      email: source.email ?? '',
+      location: source.location ?? '',
+      photo: source.photo_url ?? source.photo ?? null,
+    })
+  }, [currentUser, state.profile])
+  
   // Convert File to base64 string
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -24,37 +45,46 @@ export function ProfilePage() {
   }
 
   async function save() {
-    let photoToUpload = form.photo
-
-    // If we have a selected file, convert it to base64 for upload
-    if (photoFile) {
-      try {
-        const base64Image = await fileToBase64(photoFile)
-        photoToUpload = base64Image // Send base64 to backend for ImgBB upload
-      } catch (error) {
-        console.error('Error converting image to base64:', error)
-        // If conversion fails, we'll use the existing photo
-        photoToUpload = form.photo
-      }
-    }
-
-    // Update auth user
-    updateAuthUser({
+    setIsSaving(true)
+    const payload = {
       name: form.name,
       email: form.email,
       location: form.location,
-      photo: photoToUpload,
-    })
-    // Update GreenCare state's profile
-    actions.updateProfile({
-      name: (typeof form.name === 'string' ? form.name.trim() : '') || (state.profile?.name ?? ''),
-      email: (typeof form.email === 'string' ? form.email.trim() : '') || (state.profile?.email ?? ''),
-      location: (typeof form.location === 'string' ? form.location.trim() : '') || (state.profile?.location ?? ''),
-      photo: photoToUpload ?? (state.profile?.photo ?? null),
-    })
+    }
 
-    // Reset photoFile state on success
-    setPhotoFile(null)
+    if (photoFile) {
+      try {
+        payload.photo = await fileToBase64(photoFile)
+      } catch (err) {
+        console.error('Image encode failed:', err)
+        actions.toast('Could not read image file')
+        setIsSaving(false)
+        return
+      }
+    }
+
+    try {
+      // Update auth user
+      const updatedUser = await updateAuthUser(payload)
+
+      // Update GreenCare state's profile with the data from the backend
+      actions.updateProfile({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        location: updatedUser.location ?? '',
+        photo: updatedUser.photo_url ?? null,
+      })
+
+      // Show success toast
+      actions.toast('Profile updated successfully')
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      actions.toast('Failed to update profile. Please try again.')
+    } finally {
+      // Reset photoFile state on success
+      setPhotoFile(null)
+      setIsSaving(false)
+    }
   }
 
   function update(field, value) {
@@ -87,7 +117,9 @@ export function ProfilePage() {
           <div className="form-row"><label htmlFor="profEmail">Email</label><input id="profEmail" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></div>
           <div className="form-row"><label htmlFor="profLocation">Location</label><input id="profLocation" value={form.location} onChange={(event) => update('location', event.target.value)} /></div>
         </div>
-        <button className="btn btn-primary" type="button" onClick={save}>Save changes</button>
+        <button className="btn btn-primary" type="button" disabled={isSaving} onClick={save}>
+          {isSaving ? 'Saving...' : 'Save changes'}
+        </button>
       </div>
     </section>
   )
