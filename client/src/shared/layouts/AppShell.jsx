@@ -134,7 +134,7 @@ export function AppShell({ page, children }) {
                   }}
                 >
                   <img src={notificationIcon} alt="Notifications" />
-                  {unreadCount > 0 ? <span className="dot-badge"></span> : null}
+                  {unreadCount > 0 ? <span className="dot-badge"><p style={{ color: 'white' }}>{ unreadCount }</p></span> : null}
                 </button>
                 {notifOpen ? <NotificationPanel close={() => setNotifOpen(false)} /> : null}
               </div>
@@ -176,7 +176,7 @@ function NotificationPanel({ close }) {
       </div>
       <div className="notif-list">
         {sorted.length ? sorted.map((notice) => (
-          <button className={!notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
+          <button className={notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
             <span className="n-icon"><img src={notice.icon} alt="" /></span>
             {!notice.is_read && <span className="dot-badge"></span>}
             <span>

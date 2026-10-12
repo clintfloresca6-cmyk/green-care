@@ -436,13 +436,14 @@ a,
 
 .dot-badge {
   position: absolute;
-  top: 6px;
-  right: 7px;
+  top: 2px;
+  right: 3px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brick-500);
+  background-color: var(--brick-500);
   border: 2px solid var(--sage-50);
+  font-size: 11px;
 }
 
 .header-avatar {

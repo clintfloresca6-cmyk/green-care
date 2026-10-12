@@ -93,3 +93,8 @@ export const markAllRead = asyncHandler(async (req, res) => {
   await notificationsService.markAllRead(req.user.id)
   res.status(204).end()
 })
+
+export const clearAll = asyncHandler(async (req, res) => {
+  await notificationsService.clearAll(req.user.id)
+  res.status(204).end()
+})

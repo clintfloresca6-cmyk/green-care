@@ -550,6 +550,29 @@ export function GreenCareProvider({ children }) {
       }
     },
 
+    async markAllRead() {
+      try {
+        await authFetch('/notifications/read-all', { method: 'PATCH' })
+        setState(prev => ({
+          ...prev,
+          notifications: prev.notifications.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() })),
+        }))
+      } catch (error) {
+        console.error('Failed to mark all notifications as read:', error)
+        throw error
+      }
+    },
+
+    async clearNotifications() {
+      try {
+        await authFetch('/notifications/clear-all', { method: 'DELETE' })
+        setState(prev => ({ ...prev, notifications: [] }))
+      } catch (error) {
+        console.error('Failed to clear notifications:', error)
+        throw error
+      }
+    },
+
     // Library actions
     async listLibrary() {
       try {
@@ -588,6 +611,14 @@ export function GreenCareProvider({ children }) {
           method: 'PATCH',
           body: JSON.stringify(speciesData)
         })
+
+        const updated = { ...speciesData, ...(result?.data ?? result), id: speciesId }
+
+        setState(prev => ({
+          ...prev,
+          library: prev.library.map(s => (s.id === speciesId ? { ...s, ...updated } : s)),
+        }))
+
         return result.data
       } catch (error) {
         console.error('Failed to save species:', error)
@@ -652,6 +683,16 @@ export function GreenCareProvider({ children }) {
           method: 'PATCH',
           body: JSON.stringify({ status })
         })
+        
+        const updated = { ...(result?.data ?? result), id: reportId, status }
+
+        setState(prev => ({
+          ...prev,
+          adminReports: prev.adminReports.map(r =>
+            r.id === reportId ? { ...r, ...updated } : r
+          ),
+        }))
+
         return result.data
       } catch (error) {
         console.error('Failed to update report:', error)
@@ -667,7 +708,7 @@ export function GreenCareProvider({ children }) {
     }
   }, [state.settings.theme])
 
-    // Bridge service worker push messages into the app's toast system.
+  // Bridge service worker push messages into the app's toast system.
   // The SW posts { type: 'PUSH_RECEIVED', title, body } when a push
   // arrives while the tab is open; we surface it as a toast and refresh
   // the notification list so the new DB row shows up immediately.
@@ -695,13 +736,18 @@ export function GreenCareProvider({ children }) {
         .then((res) => {
           setState(prev => ({ ...prev, notifications: res.data || [] }))
         })
-        .catch(() => {})
+        .catch(() => { })
     }
 
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
   }, [])
-  
+
+  const unreadCount = useMemo(
+    () => state.notifications.filter((n) => !n.is_read).length,
+    [state.notifications],
+  )
+
   const isAuthenticated = Boolean(authUser)
 
   return (
@@ -709,7 +755,8 @@ export function GreenCareProvider({ children }) {
       value={{
         state,
         actions,
-        isAuthenticated
+        isAuthenticated,
+        unreadCount
       }}
     >
       {children}

@@ -14,7 +14,6 @@ export function AdminPage({ section = 'database' }) {
       <div className="admin-panel">
         {section === 'database' ? <DatabasePanel /> : null}
         {section === 'reports' ? <ReportsPanel /> : null}
-        {section === 'templates' ? <TemplatesPanel /> : null}
         {section === 'system' ? <SystemPanel /> : null}
       </div>
     </section>
@@ -25,7 +24,6 @@ function sectionTitle(section) {
   return {
     database: 'Plant Database',
     reports: 'User Reports',
-    templates: 'Notification Templates',
     system: 'System Settings',
   }[section] ?? 'Admin Console'
 }
@@ -34,15 +32,19 @@ function sectionSubtitle(section) {
   return {
     database: 'Add, edit, or remove species from the plant library reference list.',
     reports: 'Review and resolve user-submitted reports and feedback.',
-    templates: 'Manage the notification message templates sent to users.',
     system: 'Configure platform-wide parameters and prototype data.',
   }[section] ?? ''
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Plant Database
+// ─────────────────────────────────────────────────────────────────────────────
 
 function DatabasePanel() {
   const { state, actions } = useGreenCare()
   const [search, setSearch] = useState('')
   const [editingSpeciesId, setEditingSpeciesId] = useState(null)
+
   const query = search.toLowerCase()
   const species = state.library.filter(
     (item) =>
@@ -71,6 +73,7 @@ function DatabasePanel() {
           + Add Species
         </button>
       </div>
+
       <div className="card">
         <table className="admin-table">
           <thead>
@@ -92,43 +95,35 @@ function DatabasePanel() {
                 <td>{item.watering}</td>
                 <td>{item.fertilizing}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {editingSpeciesId === item.id ? (
-                    <Edit
-                      speciesId={item.id}
-                      onClose={() => setEditingSpeciesId(null)}
-                    />
-                  ) : (
-                    <>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        type="button"
-                        onClick={() => setEditingSpeciesId(item.id)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        type="button"
-                        onClick={() =>
-                          actions.openModal('confirmDeleteSpecies', { speciesId: item.id })}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() => setEditingSpeciesId(item.id)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    onClick={() =>
+                      actions.openModal('confirmDeleteSpecies', { speciesId: item.id })
+                    }
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
             {!species.length ? (
               <tr>
-                <td colSpan="6" className="muted">
-                  No species found.
-                </td>
+                <td colSpan="6" className="muted">No species found.</td>
               </tr>
             ) : null}
           </tbody>
         </table>
       </div>
+
+      {/* Single Edit modal — renders once, fills in whichever row was clicked */}
       {editingSpeciesId !== null && (
         <Edit
           speciesId={editingSpeciesId}
@@ -139,9 +134,14 @@ function DatabasePanel() {
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Reports
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ReportsPanel() {
   const { state, actions } = useGreenCare()
   const openCount = state.adminReports.filter((r) => r.status === 'open').length
+
   return (
     <>
       {openCount > 0 && (
@@ -152,6 +152,7 @@ function ReportsPanel() {
           </span>
         </div>
       )}
+
       <div className="card">
         <table className="admin-table">
           <thead>
@@ -168,7 +169,9 @@ function ReportsPanel() {
                 <td>
                   <strong style={{ fontSize: 13 }}>{report.subject}</strong>
                 </td>
-                <td className="muted" style={{ height: '50px'}}>{report.detail}</td>
+                <td className="muted" style={{ height: '50px' }}>
+                  {report.detail}
+                </td>
                 <td>
                   <span
                     className={`badge ${
@@ -186,6 +189,7 @@ function ReportsPanel() {
                   <button
                     className="btn btn-secondary btn-sm"
                     type="button"
+                    disabled={report.status === 'resolved'}
                     onClick={() => actions.updateReport(report.id, 'resolved')}
                   >
                     Resolve
@@ -193,6 +197,7 @@ function ReportsPanel() {
                   <button
                     className="btn btn-ghost btn-sm"
                     type="button"
+                    disabled={report.status === 'dismissed'}
                     onClick={() => actions.updateReport(report.id, 'dismissed')}
                   >
                     Dismiss
@@ -200,6 +205,11 @@ function ReportsPanel() {
                 </td>
               </tr>
             ))}
+            {!state.adminReports.length ? (
+              <tr>
+                <td colSpan="4" className="muted">No reports yet.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
@@ -207,85 +217,14 @@ function ReportsPanel() {
   )
 }
 
-function TemplatesPanel() {
-  const { actions } = useGreenCare()
-  const templates = [
-    {
-      name: 'Watering Reminder',
-      trigger: 'On scheduled watering day',
-      body: '🌱 {plant} needs watering today.',
-    },
-    {
-      name: 'Fertilizing Reminder',
-      trigger: 'On scheduled fertilizing day',
-      body: '🌿 {plant} fertilizer is due {date}.',
-    },
-    {
-      name: 'Overdue Alert',
-      trigger: 'When task is overdue',
-      body: '⚠ {plant} has not been checked recently.',
-    },
-    {
-      name: 'Health Alert',
-      trigger: 'On health status change',
-      body: '{plant} is showing signs it needs attention.',
-    },
-  ]
-  return (
-    <div className="card">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Template Name</th>
-            <th>Trigger</th>
-            <th>Message Body</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((template) => (
-            <tr key={template.name}>
-              <td>
-                <strong style={{ fontSize: 13 }}>{template.name}</strong>
-              </td>
-              <td className="muted" style={{ fontSize: 12.5 }}>
-                {template.trigger}
-              </td>
-              <td className="muted">{template.body}</td>
-              <td style={{ textAlign: 'right' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  type="button"
-                  onClick={() =>
-                    actions.openModal('noop', {
-                      message:
-                        'Template editing is simulated in this frontend prototype.',
-                    })
-                  }
-                >
-                  Edit
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+// ─────────────────────────────────────────────────────────────────────────────
+//  System
+// ─────────────────────────────────────────────────────────────────────────────
 
 function SystemPanel() {
   const { state, actions } = useGreenCare()
   return (
     <div className="settings-grid">
-      <div className="card">
-        <div className="card-head">
-          <h3>System Parameters</h3>
-        </div>
-        <ReadonlyToggle label="Allow new user registration" checked />
-        <ReadonlyToggle label="Enable plant diagnosis feature" checked />
-        <ReadonlyToggle label="Send weekly report emails" />
-      </div>
       <div className="card">
         <div className="card-head">
           <h3>Database Snapshot</h3>
@@ -303,18 +242,6 @@ function SystemPanel() {
           Reset Prototype Data
         </button>
       </div>
-    </div>
-  )
-}
-
-function ReadonlyToggle({ label, checked = false }) {
-  return (
-    <div className="toggle-row">
-      <span>{label}</span>
-      <label className="switch">
-        <input type="checkbox" checked={checked} readOnly />
-        <span className="slider" />
-      </label>
     </div>
   )
 }

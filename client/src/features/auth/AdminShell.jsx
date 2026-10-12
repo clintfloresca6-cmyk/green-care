@@ -21,12 +21,6 @@ const adminNavItems = [
     description: 'Review flagged content',
   },
   {
-    id: 'templates',
-    label: 'Notification Templates',
-    icon: notificationIcon,
-    description: 'Edit alert messages',
-  },
-  {
     id: 'system',
     label: 'System Settings',
     icon: settingsIcon,
