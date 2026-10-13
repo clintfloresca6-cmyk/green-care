@@ -2,11 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useAuth } from '../../features/auth/AuthContext'
 import { todayISO } from '../utils/date'
 import { TASK_TYPE_TO_ACTIVITY } from '../utils/plants'
-import calendarIcon from '../../assets/calendar1.svg'
-import warningIcon from '../../assets/warning.svg'
-import locationIcon from '../../assets/location.svg'
+import { subscribeToPush } from '../utils/push.js'
+import { io } from 'socket.io-client'
 
-// ─── Static Data (equivalent to mock data healthIssues) ────────────────────────
+// ─── Static Data ─────────────────────────────────────────────────────────────
 const HEALTH_ISSUES = {
   'Yellow Leaves': { causes: ['Overwatering', 'Insufficient light', 'Nutrient deficiency'], tips: ['Check soil moisture before watering again', 'Review watering frequency', 'Move the plant to appropriate lighting'] },
   Wilting: { causes: ['Underwatering', 'Root stress', 'Heat exposure'], tips: ['Water thoroughly and check drainage', 'Move away from direct heat sources', "Check roots aren't bound or rotting"] },
@@ -16,19 +15,20 @@ const HEALTH_ISSUES = {
   Underwatering: { causes: ['Forgetting scheduled waterings', 'Fast-draining soil mix', 'Low humidity environment'], tips: ['Set reminders for consistent watering', 'Water deeply until it drains out the bottom', 'Group plants to raise local humidity'] }
 }
 
-// ─── Context ──────────────────────────────────────────────────────────────────
 const GreenCareContext = createContext(null)
 
-// Convert an API journal row (snake_case) to the shape the UI expects
+const SOCKET_URL = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
+
 const toJournalEntry = (row) => ({
-  ...row, // keeps created_at, which the activity feed uses
+  ...row,
   plantId: row.plant_id,
   date: row.entry_date,
   photo: row.photo_url,
+  title: row.subject || row.activity,
 })
 
 const toTask = (row) => ({
-  ...row, // keeps status, priority, type, created_at, completed_at
+  ...row,
   plantId: row.plant_id,
   date: row.task_date ? String(row.task_date).slice(0, 10) : null,
   time: row.task_time,
@@ -38,7 +38,6 @@ export function GreenCareProvider({ children }) {
   const { currentUser: authUser } = useAuth()
   const [dismissedDerived, setDismissedDerived] = useState(new Set())
 
-  // Get theme from localStorage with fallback to 'light'
   const getStoredTheme = () => {
     if (typeof window !== 'undefined') {
       const storedTheme = localStorage.getItem('greencare-theme')
@@ -48,199 +47,120 @@ export function GreenCareProvider({ children }) {
   }
 
   const [state, setState] = useState(() => {
-    // If no auth user, return minimal state
     if (!authUser) {
       return {
-        plants: [],
-        tasks: [],
-        journal: [],
-        notifications: [],
-        library: [],
-        healthIssues: HEALTH_ISSUES,
-        profile: null,
+        plants: [], tasks: [], journal: [], notifications: [], library: [],
+        healthIssues: HEALTH_ISSUES, profile: null,
         settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: getStoredTheme(), reminderTime: '08:00', weekStart: 'mon' },
-        activity: [],
-        adminReports: [],
-        toasts: [],
-        modal: null,
+        activity: [], adminReports: [], toasts: [], modal: null,
       }
     }
-
-    // If auth user exists but we haven't fetched data yet, start with empty collections
-    // They will be populated by the effect below
     return {
-      plants: [],
-      tasks: [],
-      journal: [],
-      notifications: [],
-      library: [],
+      plants: [], tasks: [], journal: [], notifications: [], library: [],
       healthIssues: HEALTH_ISSUES,
-      profile: {
-        id: authUser.id,
-        name: authUser.name,
-        email: authUser.email,
-        role: authUser.role,
-        photo: authUser.photo_url || null,
-        location: authUser.location ?? '',
-      },
+      profile: { id: authUser.id, name: authUser.name, email: authUser.email, role: authUser.role, photo: authUser.photo_url || null, location: authUser.location ?? '' },
       settings: { careReminders: true, overdueReminders: true, healthAlerts: true, browserNotifs: false, theme: getStoredTheme(), reminderTime: '08:00', weekStart: 'mon' },
-      activity: [],
-      adminReports: [],
-      toasts: [],
-      modal: null,
+      activity: [], adminReports: [], toasts: [], modal: null,
     }
   })
 
-  // Fetch initial data when auth user changes (login/logout)
+  // ── Authenticated fetch helper (must be defined before effects that use it) ──
+  const authFetch = useCallback(async (endpoint, options = {}) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      credentials: 'include',
+      ...options,
+    })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error?.message || errorData.error || `Request failed: ${response.status}`)
+    }
+    return await response.json()
+  }, [])
+
+  // ── Fetch initial data on login/logout ───────────────────────────────────────
   useEffect(() => {
     if (!authUser) return
 
-    // Fetch all initial data for the logged-in user
     const fetchInitialData = async () => {
       try {
-        // Fetch plants
         const plantsData = await authFetch('/plants')
         const plants = plantsData.data || []
 
-        // Fetch tasks
         const tasksData = await authFetch('/tasks')
         const tasks = (tasksData.data || []).map(toTask)
 
-        // Fetch journal entries
         const journalData = await authFetch('/journal')
         const journal = (journalData.data || []).map(toJournalEntry)
 
-        // Fetch notifications
         const notificationsData = await authFetch('/notifications')
         const notifications = notificationsData.data || []
 
-        // Fetch library species
         const libraryData = await authFetch('/library')
         const library = libraryData.data || []
 
-        // Fetch admin reports (only for admins)
         let adminReports = []
         if (authUser.role === 'admin') {
-          const adminData = await authFetch('/admin/reports') // assuming endpoint for admin reports
+          const adminData = await authFetch('/admin/reports')
           adminReports = adminData.data || []
         }
 
-        // Update state with fetched data
-        setState(prev => ({
-          ...prev,
-          plants,
-          tasks,
-          journal,
-          notifications,
-          library,
-          adminReports,
-          // Activity will be computed below
-        }))
+        setState(prev => ({ ...prev, plants, tasks, journal, notifications, library, adminReports }))
 
-        // Compute activity from recent journal and tasks
         const recentJournal = [...journal].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
         const recentTasks = [...tasks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
         const activity = [
           ...recentJournal.map(entry => ({
             text: entry.activity,
-            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            time: new Date(entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
           })),
           ...recentTasks.map(task => ({
             text: `${task.type} ${task.plant_id ? '(for plant)' : ''}`,
-            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          }))
+            time: new Date(task.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          })),
         ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8)
 
         setState(prev => ({ ...prev, activity }))
-
       } catch (error) {
         console.error('Failed to fetch initial data:', error)
-        // Keep existing state if fetch fails
       }
     }
 
     fetchInitialData()
-  }, [authUser])
+  }, [authUser, authFetch])
 
-  // Compute derived notifications based on current tasks (useMemo for pure computation)
+  // ── Push subscription (gated by setting) ─────────────────────────────────────
+  useEffect(() => {
+    if (!authUser) return
+    if (!state.settings.browserNotifs) return
+    subscribeToPush().catch((err) => console.warn('[push] subscribe failed:', err))
+  }, [authUser, state.settings.browserNotifs])
+
+  // ── Derived notifications ────────────────────────────────────────────────────
   const derivedNotifications = useMemo(() => {
     if (!authUser) return []
 
     const today = new Date().toISOString().slice(0, 10)
     const todayDate = new Date(today)
 
-    // Count tasks due today (not completed)
-    const tasksDueToday = state.tasks.filter(task =>
-      task.date === today &&
-      task.status !== 'completed'
-    ).length
+    const tasksDueToday = state.tasks.filter(t => t.date === today && t.status !== 'completed').length
+    const overdueTasks = state.tasks.filter(t => t.date && new Date(t.date) < todayDate && t.status !== 'completed').length
 
-    // Count overdue tasks (date < today and not completed)
-    const overdueTasks = state.tasks.filter(task =>
-      task.date &&
-      new Date(task.date) < todayDate &&
-      task.status !== 'completed'
-    ).length
+    const oneWeek = new Date()
+    oneWeek.setDate(oneWeek.getDate() + 7)
+    const oneWeekISO = oneWeek.toISOString().slice(0, 10)
+    const tasksDueThisWeek = state.tasks.filter(t => t.date >= today && t.date <= oneWeekISO && t.status !== 'completed').length
 
-    // Count tasks due this week (next 7 days, not completed)
-    const oneWeekFromToday = new Date()
-    oneWeekFromToday.setDate(oneWeekFromToday.getDate() + 7)
-    const oneWeekFromTodayISO = oneWeekFromToday.toISOString().slice(0, 10)
-
-    const tasksDueThisWeek = state.tasks.filter(task =>
-      task.date >= today &&
-      task.date <= oneWeekFromTodayISO &&
-      task.status !== 'completed'
-    ).length
-
-    // Create derived notifications array
-    const derivedNotifications = []
-
-    if (tasksDueToday > 0) {
-      derivedNotifications.push({
-        id: 'derived-tasks-due-today',
-        type: 'task_due',
-        title: `${tasksDueToday} task${tasksDueToday === 1 ? '' : 's'} due today`,
-        body: null,
-        notice_date: today,
-        is_read: false,
-        page: 'schedule',
-      })
-    }
-
-    if (overdueTasks > 0) {
-      derivedNotifications.push({
-        id: `derived-overdue-tasks`,
-        type: 'task_overdue',
-        title: `${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'}`,
-        body: null,
-        notice_date: today,
-        is_read: false,
-        page: 'schedule'
-      })
-    }
-
-    if (tasksDueThisWeek > 0) {
-      derivedNotifications.push({
-        id: `derived-tasks-this-week`,
-        type: 'task_due_this_week',
-        title: `${tasksDueThisWeek} task${tasksDueThisWeek === 1 ? '' : 's'} due this week`,
-        body: null,
-        notice_date: today,
-        is_read: false,
-        page: 'schedule'
-      })
-    }
-
-    return derivedNotifications
+    const out = []
+    if (tasksDueToday > 0) out.push({ id: 'derived-tasks-due-today', type: 'task_due', title: `${tasksDueToday} task${tasksDueToday === 1 ? '' : 's'} due today`, body: null, notice_date: today, is_read: false, page: 'schedule' })
+    if (overdueTasks > 0) out.push({ id: 'derived-overdue-tasks', type: 'task_overdue', title: `${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'}`, body: null, notice_date: today, is_read: false, page: 'schedule' })
+    if (tasksDueThisWeek > 0) out.push({ id: 'derived-tasks-this-week', type: 'task_due_this_week', title: `${tasksDueThisWeek} task${tasksDueThisWeek === 1 ? '' : 's'} due this week`, body: null, notice_date: today, is_read: false, page: 'schedule' })
+    return out
   }, [state.tasks, authUser])
 
-  // Merge stored notifications with the derived ones (minus any the user dismissed)
+  // ── Merge derived notifications into state.notifications ─────────────────────
   useEffect(() => {
-    const visibleDerived = derivedNotifications.filter(
-      (n) => !dismissedDerived.has(n.id),
-    )
-
+    const visibleDerived = derivedNotifications.filter(n => !dismissedDerived.has(n.id))
     setState(prev => ({
       ...prev,
       notifications: [
@@ -250,241 +170,163 @@ export function GreenCareProvider({ children }) {
     }))
   }, [derivedNotifications, dismissedDerived])
 
-  // Save theme to localStorage whenever it changes
+  // ── Theme persistence (single instance) ──────────────────────────────────────
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('greencare-theme', state.settings.theme)
     }
   }, [state.settings.theme])
 
-  // Helper to make authenticated fetch calls
-  const authFetch = useCallback(async (endpoint, options = {}) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
-        },
-        credentials: 'include',
-        ...options
+  // ── Real-time socket (below authFetch so no TDZ error) ───────────────────────
+  useEffect(() => {
+    if (!authUser) return
+
+    const socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    })
+
+    socket.on('connect', () => console.log('[socket] connected', socket.id))
+    socket.on('connect_error', (err) => console.warn('[socket] error:', err.message))
+
+    socket.on('notification:new', (notif) => {
+      setState(prev => {
+        if (prev.notifications.some(n => n.id === notif.id)) return prev
+        return { ...prev, notifications: [...prev.notifications, notif] }
       })
+    })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || errorData.error || `Request failed: ${response.status}`)
-      }
+    socket.on('notification:update', () => {
+      authFetch('/notifications')
+        .then(res => setState(prev => ({ ...prev, notifications: res.data || [] })))
+        .catch(() => { })
+    })
 
-      return await response.json()
-    } catch (error) {
-      throw error
-    }
-  }, [])
+    socket.on('plant:created', (plant) => {
+      setState(prev => {
+        if (prev.plants.some(p => p.id === plant.id)) return prev
+        return { ...prev, plants: [plant, ...prev.plants] }
+      })
+    })
 
-  const actions = {
-    // Modal actions (simplified - in a full app these would update modal state)
-    openModal: (type, props = {}) => {
+    socket.on('plant:updated', (plant) => {
       setState(prev => ({
         ...prev,
-        modal: { type, props }
-      }));
-    },
-    closeModal: () => {
-      setState(prev => ({
-        ...prev,
-        modal: null
-      }));
-    },
-    toast: (message) => {
-      const toast = {
-        id: Date.now() + Math.random(),
-        message,
-      };
-      setState(prev => ({
-        ...prev,
-        toasts: [...prev.toasts, toast],
-      }));
-      setTimeout(() => {
-        setState(prev => ({
-          ...prev,
-          toasts: prev.toasts.filter(t => t.id !== toast.id),
-        }));
-      }, 3000);
-    },
-    resetData() {
-      // This clears the data collections (plants, tasks, journal, notifications, library, activity, adminReports, toasts)
-      setState(prev => ({
-        ...prev,
-        plants: [],
-        tasks: [],
-        journal: [],
-        notifications: [],
-        library: [],
-        activity: [],
-        adminReports: [],
-        toasts: [],
+        plants: prev.plants.map(p => (p.id === plant.id ? plant : p)),
       }))
+    })
+
+    socket.on('plant:archived', ({ id }) => {
+      setState(prev => ({ ...prev, plants: prev.plants.filter(p => p.id !== id) }))
+    })
+
+    return () => socket.disconnect()
+  }, [authUser, authFetch])
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+  const actions = {
+    openModal: (type, props = {}) => setState(prev => ({ ...prev, modal: { type, props } })),
+    closeModal: () => setState(prev => ({ ...prev, modal: null })),
+
+    toast: (message) => {
+      const toast = { id: Date.now() + Math.random(), message }
+      setState(prev => ({ ...prev, toasts: [...prev.toasts, toast] }))
+      setTimeout(() => {
+        setState(prev => ({ ...prev, toasts: prev.toasts.filter(t => t.id !== toast.id) }))
+      }, 3000)
     },
 
-    // Plant actions
+    resetData() {
+      setState(prev => ({ ...prev, plants: [], tasks: [], journal: [], notifications: [], library: [], activity: [], adminReports: [], toasts: [] }))
+    },
+
+    // ── Plants ──
     async listPlants() {
-      try {
-        const result = await authFetch('/plants')
-        setState(prev => ({ ...prev, plants: result.data || [] }))
-        return result.data || []
-      } catch (error) {
-        console.error('Failed to list plants:', error)
-        throw error
-      }
+      const result = await authFetch('/plants')
+      setState(prev => ({ ...prev, plants: result.data || [] }))
+      return result.data || []
     },
 
     async getPlant(plantId) {
-      try {
-        const result = await authFetch(`/plants/${plantId}`)
-        return result.data
-      } catch (error) {
-        console.error('Failed to get plant:', error)
-        throw error
-      }
+      const result = await authFetch(`/plants/${plantId}`)
+      return result.data
     },
 
     async createPlant(payload) {
-      try {
-        const result = await authFetch('/plants', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-        // Update the plants list
-        setState(prev => ({
-          ...prev,
-          plants: [...prev.plants, result.data]
-        }))
+      const result = await authFetch('/plants', { method: 'POST', body: JSON.stringify(payload) })
+      setState(prev => ({ ...prev, plants: [result.data, ...prev.plants] }))
 
-        // Create event notification for plant added
-        try {
-          const notificationPayload = {
-            id: `event-plant-added-${Date.now()}`,
-            title: `Added new plant: ${payload.name || 'Unknown Plant'}`,
-            notice_date: new Date().toISOString().slice(0, 10),
-            page: 'plants',
-            plantId: result.data.id
-          }
-          // We don't await this as it's not critical if it fails
-          this.addNotification(notificationPayload).catch(err => console.error('Failed to add plant notification:', err))
-        } catch (notificationError) {
-          console.error('Failed to create plant event notification:', notificationError)
-        }
+      // Event notification (best-effort)
+      actions.addNotification({
+        type: 'system',
+        title: `Added new plant: ${payload.name || 'Unknown Plant'}`,
+        notice_date: todayISO(),
+        page: 'plants',
+        plantId: result.data.id,
+      }).catch(err => console.error('Failed to add plant notification:', err))
 
-        return result.data
-      } catch (error) {
-        console.error('Failed to create plant:', error)
-        throw error
-      }
+      return result.data
     },
 
     async updatePlant(plantId, patch) {
-      try {
-        const result = await authFetch(`/plants/${plantId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(patch)
-        })
-        // Update the specific plant in the list
-        setState(prev => ({
-          ...prev,
-          plants: prev.plants.map(plant =>
-            plant.id === plantId ? result.data : plant
-          )
-        }))
-        return result.data
-      } catch (error) {
-        console.error('Failed to update plant:', error)
-        throw error
-      }
+      const result = await authFetch(`/plants/${plantId}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      setState(prev => ({ ...prev, plants: prev.plants.map(p => (p.id === plantId ? result.data : p)) }))
+      return result.data
     },
 
     async archivePlant(plantId) {
-      try {
-        await authFetch(`/plants/${plantId}`, {
-          method: 'DELETE'
-        })
-        // Remove from plants list
-        setState(prev => ({
-          ...prev,
-          plants: prev.plants.filter(plant => plant.id !== plantId)
-        }))
-      } catch (error) {
-        console.error('Failed to archive plant:', error)
-        throw error
-      }
+      await authFetch(`/plants/${plantId}`, { method: 'DELETE' })
+      setState(prev => ({ ...prev, plants: prev.plants.filter(p => p.id !== plantId) }))
     },
 
-    // Task actions
+    // ── Tasks ──
     async listTasks() {
-      try {
-        const result = await authFetch('/tasks')
-        const tasks = (result.data || []).map(toTask)
-        setState(prev => ({ ...prev, tasks }))
-        return tasks
-      } catch (error) {
-        console.error('Failed to list tasks:', error)
-        throw error
-      }
+      const result = await authFetch('/tasks')
+      const tasks = (result.data || []).map(toTask)
+      setState(prev => ({ ...prev, tasks }))
+      return tasks
     },
 
     async createTask(payload) {
-      try {
-        const result = await authFetch('/tasks', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-        setState(prev => ({
-          ...prev,
-          tasks: [...prev.tasks, toTask(result.data)]
-        }))
+      const result = await authFetch('/tasks', { method: 'POST', body: JSON.stringify(payload) })
+      setState(prev => ({ ...prev, tasks: [ toTask(result.data), ...prev.tasks] }))
 
-        // Create event notification for task created
-        try {
-          const notificationPayload = {
-            id: `event-task-created-${Date.now()}`,
-            title: `New task created: ${payload.type || 'Task'} for plant`,
-            notice_date: new Date().toISOString().slice(0, 10),
-            page: 'schedule'
-          }
-          // We don't await this as it's not critical if it fails
-          this.addNotification(notificationPayload).catch(err => console.error('Failed to add task notification:', err))
-        } catch (notificationError) {
-          console.error('Failed to create task event notification:', notificationError)
-        }
+      actions.addNotification({
+        type: 'system',
+        title: `New task created: ${payload.type || 'Task'}`,
+        notice_date: todayISO(),
+        page: 'schedule',
+      }).catch(err => console.error('Failed to add task notification:', err))
 
-        return result.data
-      } catch (error) {
-        console.error('Failed to create task:', error)
-        throw error
-      }
+      return result.data
+    },
+
+    async updateTask(taskId, patch) {
+      const result = await authFetch(`/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      const updated = toTask(result.data)
+      setState(prev => ({ ...prev, tasks: prev.tasks.map(t => (t.id === taskId ? updated : t)) }))
+      return updated
     },
 
     async completeTask(task) {
-      // Accept the full task object, not just the id — callers have it anyway.
-      try {
-        // 1. Mark the current task completed
-        const result = await authFetch(`/tasks/${task.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: 'completed' }),
-        })
-        const updated = toTask(result.data)
-        setState(prev => ({
-          ...prev,
-          tasks: prev.tasks.map(t => t.id === task.id ? updated : t),
-        }))
+      const result = await authFetch(`/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'completed' }),
+      })
+      const updated = toTask(result.data)
+      setState(prev => ({ ...prev, tasks: prev.tasks.map(t => (t.id === task.id ? updated : t)) }))
 
-        // 2. Spawn the next occurrence if repeating
-        if (task.is_repeating && task.is_repeating > 0) {
-          const today = todayISO()
-          const baseDate = task.date < today ? today : task.date
-          const [y, m, d] = baseDate.split('-').map(Number)
-          const next = new Date(Date.UTC(y, m - 1, d + task.is_repeating))
-          const newDateISO = next.toISOString().slice(0, 10)
+      // Spawn next repeating occurrence
+      if (task.is_repeating && task.is_repeating > 0) {
+        const today = todayISO()
+        const baseDate = task.date < today ? today : task.date
+        const [y, m, d] = baseDate.split('-').map(Number)
+        const next = new Date(Date.UTC(y, m - 1, d + task.is_repeating))
+        const newDateISO = next.toISOString().slice(0, 10)
 
-          const newTask = {
+        const created = await authFetch('/tasks', {
+          method: 'POST',
+          body: JSON.stringify({
             plant_id: task.plantId,
             type: task.type,
             task_date: newDateISO,
@@ -492,327 +334,181 @@ export function GreenCareProvider({ children }) {
             priority: task.priority,
             status: 'pending',
             is_repeating: task.is_repeating,
-          }
-
-          const created = await authFetch('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(newTask),
-          })
-          setState(prev => ({
-            ...prev,
-            tasks: [...prev.tasks, toTask(created.data)],
-          }))
-        }
-
-        // 3. Journal entry
-        const plant = state.plants.find(p => p.id === task.plantId)
-        await this.createJournalEntry({
-          plant_id: task.plantId,
-          entry_date: task.date,
-          activity: TASK_TYPE_TO_ACTIVITY[task.type] ?? task.type,
-          notes: `Task "${task.type}" for plant "${plant?.name || ''}" completed on ${task.date}.`,
-        }).catch(err => console.error('Journal entry failed:', err))
-
-        // 4. Event notification
-        await this.addNotification({
-          type: 'system',
-          title: `Completed "${task.type}" for ${plant?.name || 'a plant'}`,
-          notice_date: todayISO(),
-          page: 'schedule',
-          taskId: task.id,
-        }).catch(err => console.error('Notification failed:', err))
-
-        return updated
-      } catch (error) {
-        console.error('Failed to complete task:', error)
-        throw error
+          }),
+        })
+        setState(prev => ({ ...prev, tasks: [...prev.tasks, toTask(created.data)] }))
       }
+
+      const plant = state.plants.find(p => p.id === task.plantId)
+
+      await actions.createJournalEntry({
+        plant_id: task.plantId,
+        entry_date: task.date,
+        activity: TASK_TYPE_TO_ACTIVITY[task.type] ?? task.type,
+        notes: `Task "${task.type}" for plant "${plant?.name || ''}" completed on ${task.date}.`,
+      }).catch(err => console.error('Journal entry failed:', err))
+
+      await actions.addNotification({
+        type: 'system',
+        title: `Completed "${task.type}" for ${plant?.name || 'a plant'}`,
+        notice_date: todayISO(),
+        page: 'schedule',
+        taskId: task.id,
+      }).catch(err => console.error('Notification failed:', err))
+
+      return updated
     },
 
-    // Journal actions
+    // ── Journal ──
     async listJournal() {
-      try {
-        const result = await authFetch('/journal')
-        const journal = (result.data || []).map(toJournalEntry)
-        setState(prev => ({ ...prev, journal }))
-        return journal
-      } catch (error) {
-        console.error('Failed to list journal:', error)
-        throw error
-      }
+      const result = await authFetch('/journal')
+      const journal = (result.data || []).map(toJournalEntry)
+      setState(prev => ({ ...prev, journal }))
+      return journal
     },
 
     async createJournalEntry(payload) {
-      try {
-        const result = await authFetch('/journal', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-        const entry = toJournalEntry(result.data)
-        setState(prev => ({
-          ...prev,
-          journal: [...prev.journal, entry]
-        }))
-        // Also update activity
-        const newActivity = {
-          text: payload.activity,
-          time: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-        }
-        setState(prev => ({
-          ...prev,
-          activity: [newActivity, ...prev.activity].slice(0, 8)
-        }))
-        return result.data
-      } catch (error) {
-        console.error('Failed to create journal entry:', error)
-        throw error
+      const result = await authFetch('/journal', { method: 'POST', body: JSON.stringify(payload) })
+      const entry = toJournalEntry(result.data)
+      setState(prev => ({ ...prev, journal: [...prev.journal, entry] }))
+
+      const newActivity = {
+        text: payload.activity,
+        time: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }
+      setState(prev => ({ ...prev, activity: [newActivity, ...prev.activity].slice(0, 8) }))
+      return result.data
     },
 
-    // Notification actions
+    // ── Notifications ──
     async listNotifications() {
-      try {
-        const result = await authFetch('/notifications')
-        setState(prev => ({ ...prev, notifications: result.data || [] }))
-        return result.data || []
-      } catch (error) {
-        console.error('Failed to list notifications:', error)
-        throw error
-      }
+      const result = await authFetch('/notifications')
+      setState(prev => ({ ...prev, notifications: result.data || [] }))
+      return result.data || []
     },
 
     async markNotificationRead(notificationId) {
-      // Derived notifications live only in client state — nothing to PATCH.
       if (notificationId.startsWith('derived-')) {
         setDismissedDerived(prev => new Set(prev).add(notificationId))
         return
       }
-
       try {
-        await authFetch(`/notifications/${notificationId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ is_read: true }),
-        })
+        await authFetch(`/notifications/${notificationId}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
         setState(prev => ({
           ...prev,
-          notifications: prev.notifications.map(notif =>
-            notif.id === notificationId ? { ...notif, is_read: true } : notif
-          ),
+          notifications: prev.notifications.map(n => (n.id === notificationId ? { ...n, is_read: true } : n)),
         }))
       } catch (error) {
-        // A failed read-marker isn't worth interrupting navigation.
         console.error('Failed to mark notification as read:', error)
       }
     },
 
     async markAllRead() {
-      try {
-        await authFetch('/notifications/read-all', { method: 'PATCH' })
-        setState(prev => ({
-          ...prev,
-          notifications: prev.notifications.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() })),
-        }))
-      } catch (error) {
-        console.error('Failed to mark all notifications as read:', error)
-        throw error
-      }
+      await authFetch('/notifications/read-all', { method: 'PATCH' })
+      setState(prev => ({
+        ...prev,
+        notifications: prev.notifications.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() })),
+      }))
     },
 
     async clearNotifications() {
-      try {
-        await authFetch('/notifications/clear-all', { method: 'DELETE' })
-        setState(prev => ({ ...prev, notifications: [] }))
-      } catch (error) {
-        console.error('Failed to clear notifications:', error)
-        throw error
-      }
+      await authFetch('/notifications/clear-all', { method: 'DELETE' })
+      setState(prev => ({ ...prev, notifications: [] }))
     },
 
-    // Library actions
-    async listLibrary() {
-      try {
-        const result = await authFetch('/library')
-        setState(prev => ({ ...prev, library: result.data || [] }))
-        return result.data || []
-      } catch (error) {
-        console.error('Failed to list library:', error)
-        throw error
-      }
-    },
-
-    // Trefle actions
-    async searchTreflePlants(params = {}) {
-      try {
-        // Default params for consistency with existing library browsing
-        const defaultParams = {
-          page: 1,
-          perPage: 10,
-          query: ''
-        }
-        const searchParams = { ...defaultParams, ...params }
-
-        const result = await authFetch(`/trefle/search?page=${searchParams.page}&per_page=${searchParams.perPage}&q=${encodeURIComponent(searchParams.query)}`)
-        return result.data || []
-      } catch (error) {
-        console.error('Failed to search Trefle plants:', error)
-        throw error
-      }
-    },
-
-    // Species actions
-    async saveSpecies(speciesId, speciesData) {
-      try {
-        const result = await authFetch(`/admin/species/${speciesId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(speciesData)
-        })
-
-        const updated = { ...speciesData, ...(result?.data ?? result), id: speciesId }
-
-        setState(prev => ({
-          ...prev,
-          library: prev.library.map(s => (s.id === speciesId ? { ...s, ...updated } : s)),
-        }))
-
-        return result.data
-      } catch (error) {
-        console.error('Failed to save species:', error)
-        throw error
-      }
-    },
-
-    // Settings actions
-    async updateSettings(settingsPatch) {
-      // Update the specific settings in the state locally
-      setState(prev => ({
-        ...prev,
-        settings: {
-          ...prev.settings,
-          ...settingsPatch
-        }
-      }))
-      return settingsPatch
-    },
-
-    // Profile actions
-    async updateProfile(profilePatch) {
-      // Update the specific profile fields in the state locally
-      // Handle case where profile might be null (when no auth user)
-      setState(prev => ({
-        ...prev,
-        profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch }
-      }))
-      return profilePatch
-    },
-
-    // Event notifications actions
     async addNotification(notification) {
-      const result = await authFetch('/notifications', {
-        method: 'POST',
-        body: JSON.stringify(notification),
-      })
+      const result = await authFetch('/notifications', { method: 'POST', body: JSON.stringify(notification) })
       setState(prev => ({ ...prev, notifications: [...prev.notifications, result.data] }))
       return result.data
     },
 
-    // Report actions
+    // ── Library ──
+    async listLibrary() {
+      const result = await authFetch('/library')
+      setState(prev => ({ ...prev, library: result.data || [] }))
+      return result.data || []
+    },
+
+    async searchTreflePlants(params = {}) {
+      const defaults = { page: 1, perPage: 10, query: '' }
+      const p = { ...defaults, ...params }
+      const result = await authFetch(`/trefle/search?page=${p.page}&per_page=${p.perPage}&q=${encodeURIComponent(p.query)}`)
+      return result.data || []
+    },
+
+    async saveSpecies(speciesId, speciesData) {
+      const result = await authFetch(`/admin/species/${speciesId}`, { method: 'PATCH', body: JSON.stringify(speciesData) })
+      const updated = { ...speciesData, ...(result?.data ?? result), id: speciesId }
+      setState(prev => ({
+        ...prev,
+        library: prev.library.map(s => (s.id === speciesId ? { ...s, ...updated } : s)),
+      }))
+      return result.data
+    },
+
+    // ── Settings / Profile ──
+    async updateSettings(settingsPatch) {
+      setState(prev => ({ ...prev, settings: { ...prev.settings, ...settingsPatch } }))
+      return settingsPatch
+    },
+
+    async updateProfile(profilePatch) {
+      setState(prev => ({
+        ...prev,
+        profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch },
+      }))
+      return profilePatch
+    },
+
+    // ── Reports ──
     async createReport(payload) {
-      try {
-        const result = await authFetch('/reports', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-        // Optionally update adminReports state if we want to show them immediately
-        // For now, we just return the result
-        return result.data
-      } catch (error) {
-        console.error('Failed to create report:', error)
-        throw error
-      }
+      const result = await authFetch('/reports', { method: 'POST', body: JSON.stringify(payload) })
+      return result.data
     },
 
     async updateReport(reportId, status) {
-      try {
-        const result = await authFetch(`/reports/${reportId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status })
-        })
-
-        const updated = { ...(result?.data ?? result), id: reportId, status }
-
-        setState(prev => ({
-          ...prev,
-          adminReports: prev.adminReports.map(r =>
-            r.id === reportId ? { ...r, ...updated } : r
-          ),
-        }))
-
-        return result.data
-      } catch (error) {
-        console.error('Failed to update report:', error)
-        throw error
-      }
+      const result = await authFetch(`/reports/${reportId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      const updated = { ...(result?.data ?? result), id: reportId, status }
+      setState(prev => ({
+        ...prev,
+        adminReports: prev.adminReports.map(r => (r.id === reportId ? { ...r, ...updated } : r)),
+      }))
+      return result.data
     },
   }
 
-  // Save theme to localStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('greencare-theme', state.settings.theme)
-    }
-  }, [state.settings.theme])
-
-  // Bridge service worker push messages into the app's toast system.
-  // The SW posts { type: 'PUSH_RECEIVED', title, body } when a push
-  // arrives while the tab is open; we surface it as a toast and refresh
-  // the notification list so the new DB row shows up immediately.
+  // ── Service worker push → toast + refresh notifications ──────────────────────
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
 
     function onMessage(event) {
       if (event.data?.type !== 'PUSH_RECEIVED') return
       setState(prev => {
-        const toast = {
-          id: Date.now() + Math.random(),
-          message: event.data.body || event.data.title || 'New notification',
-        }
+        const toast = { id: Date.now() + Math.random(), message: event.data.body || event.data.title || 'New notification' }
         return { ...prev, toasts: [...prev.toasts, toast] }
       })
       setTimeout(() => {
-        setState(prev => ({
-          ...prev,
-          toasts: prev.toasts.slice(1),
-        }))
+        setState(prev => ({ ...prev, toasts: prev.toasts.slice(1) }))
       }, 3000)
 
-      // Pull the fresh list from the server so the badge count and list update
       authFetch('/notifications')
-        .then((res) => {
-          setState(prev => ({ ...prev, notifications: res.data || [] }))
-        })
+        .then(res => setState(prev => ({ ...prev, notifications: res.data || [] })))
         .catch(() => { })
     }
 
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
-  }, [])
+  }, [authFetch])
 
   const unreadCount = useMemo(
-    () => state.notifications.filter((n) => !n.is_read).length,
+    () => state.notifications.filter(n => !n.is_read).length,
     [state.notifications],
   )
 
   const isAuthenticated = Boolean(authUser)
 
   return (
-    <GreenCareContext
-      value={{
-        state,
-        actions,
-        isAuthenticated,
-        unreadCount
-      }}
-    >
+    <GreenCareContext value={{ state, actions, isAuthenticated, unreadCount }}>
       {children}
     </GreenCareContext>
   )

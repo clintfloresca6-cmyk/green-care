@@ -239,6 +239,7 @@ CREATE TABLE journal_entries (
   user_id      VARCHAR(32)  NOT NULL,
   plant_id     VARCHAR(32)  NULL,
   activity     VARCHAR(64)  NOT NULL,
+  subject      VARCHAR(160) NULL, 
   entry_date   DATE         NOT NULL,
   notes        TEXT         NULL,
   photo_url    VARCHAR(500) NULL,

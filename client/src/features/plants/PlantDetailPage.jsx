@@ -4,7 +4,7 @@ import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils
 import { emojiFor, healthClass, computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from './PlantDetailModal.jsx'
 import { EditPlantModal } from './EditPlantModal.jsx'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import locationIcon from '../../assets/location.svg'
 import waterIcon from '../../assets/water.svg'
 import lightIcon from '../../assets/light.svg'
@@ -16,6 +16,14 @@ export function PlantDetailPage({ plantId }) {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const plant = state.plants.find((item) => item.id === plantId)
+
+  // Redirect if the plant disappears (archived from another tab/session)
+  useEffect(() => {
+    // Guard: skip redirect while the initial plants fetch hasn't finished
+    if (state.plants.length > 0 && !plant) {
+      goTo('plants')
+    }
+  }, [plant, state.plants.length])
 
   if (!plant) {
     return (
@@ -53,7 +61,9 @@ export function PlantDetailPage({ plantId }) {
       return a.time.localeCompare(b.time);
     })
 
-  const notes = state.journal.filter((entry) => entry.plantId === plant.id).sort((a, b) => b.date.localeCompare(a.date))
+  const plantTimeline = state.journal
+    .filter((entry) => entry.plantId === plant.id)
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <section className="page active">
@@ -62,7 +72,7 @@ export function PlantDetailPage({ plantId }) {
         <div className="detail-photo">{plant.photo_url ? <img src={plant.photo_url} alt="" /> : emojiFor(plant.common_name || plant.species_name || '')}</div>
         <div className="detail-info">
           <h1>{plant.name}</h1>
-          <p className="muted">{plant.common_name || plant.species_name || 'Unknown Species'} · <img src={locationIcon} alt="Location" className="detail-icon" style={{ width: '15px'}}/> {plant.location}</p>
+          <p className="muted">{plant.common_name || plant.species_name || 'Unknown Species'} · <img src={locationIcon} alt="Location" className="detail-icon" style={{ width: '15px' }} /> {plant.location}</p>
           <span className={`badge badge-${healthClass(plant.health)}`} style={{ width: 'fit-content' }}>{plant.health}</span>
           <div className="detail-actions">
             <button className="btn btn-primary btn-sm" type="button" onClick={() => setModalOpen(true)}>Add Journal Entry</button>
@@ -87,21 +97,24 @@ export function PlantDetailPage({ plantId }) {
           <div className="card">
             <div className="card-head"><h3>Plant Growth Timeline</h3></div>
             <div className="timeline">
-              {(plant.timeline || []).map((item, index) => (
-                <div className="timeline-item" key={`${item.label}-${index}`}>
+              {plantTimeline.length ? plantTimeline.map((item) => (
+                <div className="timeline-item" key={item.id}>
                   <span className="timeline-dot"></span>
-                  <div className="timeline-body"><div>{item.label}</div><div className="timeline-date">{fmtDate(item.date)}</div></div>
+                  <div className="timeline-body">
+                    <div>{item.subject || item.activity}</div>
+                    <div className="timeline-date">{fmtDate(item.date)}</div>
+                  </div>
                 </div>
-              ))}
+              )) : <p className="muted">No history yet for this plant.</p>}
             </div>
           </div>
 
           <div className="card">
             <div className="card-head"><h3>Notes</h3></div>
-            {notes.length ? notes.map((note) => (
+            {plantTimeline.length ? plantTimeline.map((note) => (
               <div className="note-item" key={note.id}>
-                {note.notes || note.activity}
-                <div className="note-meta">{note.activity} · {fmtDate(note.date)}</div>
+                {note.notes || note.subject || note.activity}
+                <div className="note-meta">{note.subject || note.activity} · {fmtDate(note.date)}</div>
               </div>
             )) : <p className="muted">No journal notes yet for this plant.</p>}
           </div>
@@ -112,12 +125,12 @@ export function PlantDetailPage({ plantId }) {
           <div className="card">
             <div className="card-head"><h3>Next Care</h3></div>
             <div className="task-info">
-            <p style={{ fontSize: 14, marginBottom: 6 }}>
-              {daysUntilCare < 0 ? <strong style={{ color: 'var(--brick-500)' }}>{nextTaskType} overdue</strong> : daysUntilCare === 0 ? <strong>{nextTaskType} due today</strong> : `${nextTaskType} in ${daysUntilCare} day${daysUntilCare === 1 ? '' : 's'}`}
-            </p>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }}></div></div>
-            <p className="muted" style={{ marginTop: 10, fontSize: 12.5 }}>Last watered {fmtDate(plant.lastWatered)}</p>
-          </div>
+              <p style={{ fontSize: 14, marginBottom: 6 }}>
+                {daysUntilCare < 0 ? <strong style={{ color: 'var(--brick-500)' }}>{nextTaskType} overdue</strong> : daysUntilCare === 0 ? <strong>{nextTaskType} due today</strong> : `${nextTaskType} in ${daysUntilCare} day${daysUntilCare === 1 ? '' : 's'}`}
+              </p>
+              <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }}></div></div>
+              <p className="muted" style={{ marginTop: 10, fontSize: 12.5 }}>Last watered {plant.last_watered ? fmtDate(plant.last_watered) : 'Never'}</p>
+            </div>
           </div>
         ) : (
           <div className="card">

@@ -42,29 +42,30 @@ export function Modal({ preselectPlantId, onClose }) {
         }
 
         const payload = {
-          plant_id: formData.plantId,
-          activity: formData.activity,
-          entry_date: formData.date,
-          notes: formData.notes,
-          photo: photoUrl // Include photo (either base64 for upload or null)
+            plant_id: formData.plantId,
+            activity: formData.activity,
+            entry_date: formData.date,
+            subject:    formData.subject?.trim() || null,
+            notes: formData.notes,
+            photo: photoUrl // Include photo (either base64 for upload or null)
         }
 
         setIsSaving(true)
         try {
-          await actions.createJournalEntry(payload)
-          // Reset photoFile state on success
-          setPhotoFile(null)
-          // Show success toast
-          const selectedPlant = state.plants.find(p => p.id === formData.plantId)
-          const plantName = selectedPlant ? selectedPlant.name : 'a plant'
-          actions.toast(`Successfully Added ${formData.activity} for ${plantName}`)
+            await actions.createJournalEntry(payload)
+            // Reset photoFile state on success
+            setPhotoFile(null)
+            // Show success toast
+            const selectedPlant = state.plants.find(p => p.id === formData.plantId)
+            const plantName = selectedPlant ? selectedPlant.name : 'a plant'
+            actions.toast(`Successfully Added ${formData.activity} for ${plantName}`)
         } catch (error) {
-          console.error('Failed to create journal entry:', error)
-          // Optionally show error toast
-          actions.toast('Failed to add journal entry. Please try again.')
+            console.error('Failed to create journal entry:', error)
+            // Optionally show error toast
+            actions.toast('Failed to add journal entry. Please try again.')
         } finally {
-          setIsSaving(false)
-          if (onClose) onClose()
+            setIsSaving(false)
+            if (onClose) onClose()
         }
     }
 
@@ -99,6 +100,15 @@ export function Modal({ preselectPlantId, onClose }) {
                                 <option value="Checked Health">Checked Health</option>
                                 <option value="Other">Other</option>
                             </select>
+                        </div>
+                        <div className="form-row">
+                            <label>Subject</label>
+                            <input
+                                type="text"
+                                name="subject"
+                                placeholder="e.g. New leaf observed (optional)"
+                                maxLength={160}
+                            />
                         </div>
                         <div className="form-row">
                             <label>Date</label>

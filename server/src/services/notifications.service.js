@@ -2,6 +2,7 @@ import { pool } from '../config/db.js'
 import { ApiError } from '../utils/ApiError.js'
 import { randomUUID } from 'node:crypto'
 import { sendPushToUser } from './push.service.js'
+import { emitToUser } from '../realtime/socket.js'
 
 export async function listForUser(userId) {
   const [rows] = await pool.query(
@@ -21,6 +22,7 @@ export async function markRead(userId, id) {
     [id, userId],
   )
   if (!result.affectedRows) throw new ApiError(404, 'Notification not found')
+  emitToUser(userId, 'notification:update', { id, is_read: true })
 }
 
 export async function markAllRead(userId) {
@@ -30,6 +32,7 @@ export async function markAllRead(userId) {
       WHERE user_id = ? AND is_read = 0`,
     [userId],
   )
+  emitToUser(userId, 'notification:update', { all: true })
 }
 
 function buildLink(page, plantId) {
@@ -75,7 +78,11 @@ export async function createForUser(userId, {
     }).catch(err => console.error('[push] send failed:', err))
 
     const [rows] = await pool.query('SELECT * FROM notifications WHERE id = ?', [id])
-    return rows[0]
+    const row = rows[0]
+    
+    emitToUser(userId, 'notification:new', row)
+
+    return row
   }
 
   // Dedupe conflict → return the existing row
@@ -83,11 +90,17 @@ export async function createForUser(userId, {
     'SELECT * FROM notifications WHERE user_id = ? AND dedupe_key = ?',
     [userId, key],
   )
+  const row = rows[0]
+
+  if (row) emitToUser(userId, 'notification:new', row)
+    
   return rows[0] ?? null
+  
 }
 
 export async function clearAll(userId) {
   await pool.query('DELETE FROM notifications WHERE user_id = ?', [userId])
+  emitToUser(userId, 'notification:update', { cleared: true })
 }
 
 export async function scanOverdueTasks() {
@@ -129,12 +142,21 @@ export async function scanOverdueTasks() {
     )
 
     if (result.affectedRows === 1) {
+      // Fresh insert → fetch the canonical row and emit
+      const [rows] = await pool.query(
+        'SELECT * FROM notifications WHERE user_id = ? AND dedupe_key = ?',
+        [user_id, dedupe_key],
+      )
+      const row = rows[0]
+      if (row) emitToUser(user_id, 'notification:new', row)
+
       sendPushToUser(user_id, {
         title: 'GreenCare',
         body: title,
         data: { page: 'schedule', link: '/#/schedule' },
       }).catch(err => console.error('[push] overdue send failed:', err))
     }
+    // No `else` — if it was a duplicate, we do nothing
   }
 }
 
@@ -177,6 +199,7 @@ export async function scanUpcomingTasks() {
     if (existing && existing.is_read) continue
 
     if (existing) {
+      // Cooldown check
       const hoursSince = (Date.now() - new Date(existing.created_at).getTime()) / 3_600_000
       if (hoursSince < RENOTIFY_AFTER_HOURS) continue
 
@@ -184,6 +207,14 @@ export async function scanUpcomingTasks() {
         'UPDATE notifications SET title = ?, created_at = NOW() WHERE id = ?',
         [title, existing.id],
       )
+
+      // Row changed → emit an "update" event so the client replaces in place
+      const [rows] = await pool.query(
+        'SELECT * FROM notifications WHERE id = ?',
+        [existing.id],
+      )
+      if (rows[0]) emitToUser(user_id, 'notification:update', rows[0])
+
     } else {
       const id = randomUUID().replace(/-/g, '').slice(0, 26)
       await pool.query(
@@ -193,6 +224,13 @@ export async function scanUpcomingTasks() {
          VALUES (?, ?, ?, 'task_due', ?, NULL, CURDATE(), 0, 'schedule', NOW())`,
         [id, user_id, dedupe_key, title],
       )
+
+      // Fresh row → emit a "new" event so the client appends
+      const [rows] = await pool.query(
+        'SELECT * FROM notifications WHERE id = ?',
+        [id],
+      )
+      if (rows[0]) emitToUser(user_id, 'notification:new', rows[0])
     }
 
     notified++

@@ -11,6 +11,7 @@ router.use(currentUser, requireUser)
 router.get('/', validate(listTasksQuerySchema, 'query'), taskController.list)
 router.get('/:id', taskController.get)
 router.post('/', validate(createTaskSchema), taskController.create)
+router.post('/:id/complete', taskController.complete)
 router.patch('/:id', validate(updateTaskSchema), taskController.update)
 router.delete('/:id', taskController.archive)
 

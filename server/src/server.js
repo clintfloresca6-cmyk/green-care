@@ -1,11 +1,16 @@
+import { createServer } from 'node:http'
 import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { pool } from './config/db.js'
 import { logger } from './utils/logger.js'
+import { initSocket } from './realtime/socket.js'
 import { scanOverdueTasks, scanUpcomingTasks } from './services/notifications.service.js'
 
 const app = createApp()
-const server = app.listen(env.PORT, () => {
+const httpServer = createServer(app)
+initSocket(httpServer)
+
+const server = httpServer.listen(env.PORT, () => {
   logger.info(`GreenCare API on http://localhost:${env.PORT}`)
 })
 

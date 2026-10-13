@@ -57,13 +57,14 @@ export async function createForUser(userId, payload) {
   const id = randomUUID().replace(/-/g, '').slice(0, 26)
   await pool.query(
     `INSERT INTO journal_entries
-       (id, user_id, plant_id, activity, entry_date, notes, photo_url)
-     VALUES (?,?,?,?,?,?,?)`,
+       (id, user_id, plant_id, activity, subject, entry_date, notes, photo_url)
+     VALUES (?,?,?,?,?,?,?,?)`,
     [
       id,
       userId,
       payload.plant_id ?? null,
       payload.activity,
+      payload.subject ?? null,
       payload.entry_date,
       payload.notes ?? null,
       photoUrl,
@@ -78,6 +79,25 @@ export async function createForUser(userId, payload) {
 }
 
 export async function updateForUser(userId, entryId, patch) {
+  let photoUrl
+  if (patch.photo !== undefined) {
+    if (patch.photo && typeof patch.photo === 'string') {
+      try {
+        let base64Image = patch.photo
+        if (base64Image.includes('base64,')) {
+          base64Image = base64Image.split('base64,')[1]
+        }
+        const uploadResult = await uploadImageToImgbb(base64Image, env.IMGBB_API_KEY)
+        photoUrl = uploadResult.url
+      } catch (error) {
+        console.error('Error uploading image to ImgBB:', error)
+        photoUrl = null
+      }
+    } else {
+      photoUrl = patch.photo    // pass-through if caller sent a URL directly
+    }
+  }
+
   // Ownership check
   const [owned] = await pool.query(
     'SELECT id FROM journal_entries WHERE id = ? AND user_id = ?',
@@ -105,6 +125,10 @@ export async function updateForUser(userId, entryId, patch) {
     fields.push('activity = ?')
     values.push(patch.activity)
   }
+  if (patch.subject !== undefined) {
+    fields.push('subject = ?')
+    values.push(patch.subject)
+  }
   if (patch.entry_date !== undefined) {
     fields.push('entry_date = ?')
     values.push(patch.entry_date)
@@ -113,7 +137,10 @@ export async function updateForUser(userId, entryId, patch) {
     fields.push('notes = ?')
     values.push(patch.notes)
   }
-
+  if (photoUrl !== undefined) {
+    fields.push('photo_url = ?')
+    values.push(photoUrl)
+  }
   if (!fields.length) {
     const [rows] = await pool.query('SELECT * FROM journal_entries WHERE id = ?', [entryId])
     return rows[0]

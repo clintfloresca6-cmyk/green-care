@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
-import { emojiFor } from '../../shared/utils/plants.js'
+import logoIcon from '../../../public/favicon.svg'
 import { Modal } from './LibraryModal.jsx'
 
 
@@ -154,7 +154,7 @@ export function LibraryPage() {
                         className="species-icon"
                       />
                     ) : (
-                      <div className="species-icon">{emojiFor(plant.common_name || '')}</div>
+                      <div className="species-icon"><img src={logoIcon} alt="" style={{ height: '50px'}}/></div>
                     )}
                     <div className="species-name">{plant.common_name || 'Unknown'}</div>
                     <div className="species-sci">{plant.scientific_name || ''}</div>

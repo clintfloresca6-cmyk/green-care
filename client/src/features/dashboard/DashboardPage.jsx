@@ -1,9 +1,11 @@
 import { goTo } from '../../app/routes.js'
+import { useState } from 'react'
 import { TaskRow } from '../../shared/components/TaskRow.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus, emojiFor, taskIcon } from '../../shared/utils/plants.js'
+import { ScheduleModal } from './ScheduleModal.jsx'
 
 export function DashboardPage() {
   const { state } = useGreenCare()
@@ -20,6 +22,18 @@ export function DashboardPage() {
     { label: 'Completed This Week', value: completedThisWeek, icon: '✓', bg: 'var(--sage-100)' },
     { label: 'Needs Attention', value: needsAttention, icon: '⚠', bg: 'var(--brick-100)' },
   ]
+  const [editingTask, setEditingTask] = useState(null)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+
+  function openEditTask(task) {
+    setEditingTask(task)
+    setScheduleOpen(true)
+  }
+
+  function closeScheduleModal() {
+    setScheduleOpen(false)
+    setEditingTask(null)
+  }
 
   return (
     <section className="page active">
@@ -47,7 +61,7 @@ export function DashboardPage() {
             <button className="text-btn" type="button" onClick={() => goTo('schedule')}>View schedule</button>
           </div>
           <div className="task-list">
-            {todays.length ? todays.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} key={task.id} />) : <Empty title="Nothing due today" text="Enjoy the calm; check back tomorrow." />}
+            {todays.length ? todays.map((task) => <TaskRow task={task} plant={plantById(state, task.plantId)} onEdit={openEditTask} key={task.id} />) : <Empty title="Nothing due today" text="Enjoy the calm; check back tomorrow." />}
           </div>
         </div>
 
@@ -98,7 +112,11 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+      {scheduleOpen && (
+        <ScheduleModal task={editingTask} onClose={closeScheduleModal} />
+      )}
     </section>
+
   )
 }
 

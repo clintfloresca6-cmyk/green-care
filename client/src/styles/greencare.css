@@ -1128,11 +1128,14 @@ a,
 }
 
 .species-icon {
+  display: flex;
   width: 10rem;
   height: 10rem;
   border-radius: 14px;
   background: var(--sage-100);
   text-align: center;
+  justify-content: center;
+  align-items: center;
   font-size: 26px;
   margin-bottom: 10px;
   object-fit: cover;

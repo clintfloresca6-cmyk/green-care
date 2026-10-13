@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js'
 import { randomUUID } from 'node:crypto'
 import { uploadImageToImgbb } from './image-upload.service.js'
 import { env } from '../config/env.js'
+import { emitToUser } from '../realtime/socket.js'
 
 export async function listForUser(userId) {
   const [rows] = await pool.query(
@@ -66,7 +67,11 @@ export async function createForUser(userId, payload) {
       photoUrl,
     ],
   )
-  return getForUser(userId, id)
+
+  const plant = await getForUser(userId, id)
+  emitToUser(userId, 'plant:created', plant)
+
+  return plant
 }
 
 export async function updateForUser(userId, plantId, patch) {
@@ -117,7 +122,11 @@ export async function updateForUser(userId, plantId, patch) {
       values,
     )
   }
-  return getForUser(userId, plantId)
+  
+  const plant = await getForUser(userId, plantId)
+  emitToUser(userId, 'plant:updated', plant)
+
+  return plant
 }
 
 export async function archiveForUser(userId, plantId) {
@@ -126,4 +135,5 @@ export async function archiveForUser(userId, plantId) {
     'UPDATE plants SET archived_at = NOW() WHERE id = ? AND user_id = ?',
     [plantId, userId],
   )
+  emitToUser(userId, 'plant:archived', { id: plantId })
 }

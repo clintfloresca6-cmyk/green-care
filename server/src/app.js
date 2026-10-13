@@ -6,6 +6,7 @@ import { routes } from './routes/index.js'
 import { errorHandler } from './middleware/error.middleware.js'
 import { logger } from './utils/logger.js'
 import { pool } from './config/db.js'
+import { sessionMiddleware } from './config/session.js'
 
 export function createApp() {
   const app = express()
@@ -14,6 +15,8 @@ export function createApp() {
   app.use(express.json({ limit: '8mb' }))
   app.use(express.urlencoded({ extended: true, limit: '8mb' }))
 
+  app.use(sessionMiddleware)   
+  
   // Session configuration
   app.use(session({
     secret: env.SESSION_SECRET || 'greencare-session-secret-key',

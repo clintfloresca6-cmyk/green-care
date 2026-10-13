@@ -185,7 +185,7 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
                     {phase === 'idle' ? (
                         <>
                             <label className="dropzone">
-                                {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ display: 'flex', justifyContent: 'center', fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
+                                {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ display: 'flex', justifyContent: 'center',marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ display: 'flex', justifyContent: 'center', fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
                                 <input type="file" accept="image/*" hidden onChange={(event) => {
                                     const file = event.target.files?.[0];
                                     if (file) {

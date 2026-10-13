@@ -28,21 +28,34 @@ export function AppShell({ page, children }) {
 
   function handleSearch(event) {
     if (event.key !== 'Enter') return
-    const query = event.currentTarget.value.trim().toLowerCase()
+    const raw = event.currentTarget.value.trim()
+    const query = raw.toLowerCase()
     if (!query) return
-    const plant = state.plants.find((item) => item.common_name.toLowerCase().includes(query) || item.species_name.toLowerCase().includes(query))
+
+    const has = (v) => String(v ?? '').toLowerCase().includes(query)
+
+    // 1. Try a plant first (search name + species)
+    const plant = state.plants.find((item) =>
+      has(item.name) || has(item.species_name) || has(item.common_name),
+    )
     if (plant) {
       goTo('plants', plant.id)
       return
     }
-    const species = state.library.find((item) => item.common_name.toLowerCase().includes(query) || item.scientific_scientific.toLowerCase().includes(query))
+
+    // 2. Then the library
+    const species = state.library.find((item) =>
+      has(item.common_name) || has(item.scientific_name),
+    )
     if (species) {
       goTo('library')
-      actions.toast(`Showing Plant Library for "${event.currentTarget.value.trim()}"`)
+      actions.toast(`Showing Plant Library for "${raw}"`)
       return
     }
+
+    // 3. Fall back to journal
     goTo('journal')
-    actions.toast(`No exact match; showing your Care Journal for "${event.currentTarget.value.trim()}"`)
+    actions.toast(`No exact match; showing your Care Journal for "${raw}"`)
   }
 
   function handleLogout() {
@@ -135,7 +148,7 @@ export function AppShell({ page, children }) {
                   }}
                 >
                   <img src={notificationActionIcon} alt="Notifications" />
-                  {unreadCount > 0 ? <span className="dot-badge"><p style={{ color: 'white' }}>{ unreadCount }</p></span> : null}
+                  {unreadCount > 0 ? <span className="dot-badge"><p style={{ color: 'white' }}>{unreadCount}</p></span> : null}
                 </button>
                 {notifOpen ? <NotificationPanel close={() => setNotifOpen(false)} /> : null}
               </div>

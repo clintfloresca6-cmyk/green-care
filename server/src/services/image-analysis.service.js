@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { tryModels } from "./geminiModelService.js";
+import { ApiError } from "../utils/ApiError.js";
 
 /**
  * Analyzes an image to determine if it's a plant and its health status.
@@ -12,6 +13,12 @@ export async function analyzePlantImage(base64Image) {
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite"
   ];
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    // Configuration problem — not a user problem
+    throw new ApiError(500, "Image analysis is not configured");
+  }
 
   const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -45,7 +52,7 @@ export async function analyzePlantImage(base64Image) {
     return result;
   } catch (error) {
     // If all models failed, log the error and return a fallback
-    console.error("All models failed. Last error:", error);
-    return "The image must be plant";
+    console.error("Image analysis failed:", error);
+    throw new ApiError(502, "Image analysis service is temporarily unavailable");
   }
 }
