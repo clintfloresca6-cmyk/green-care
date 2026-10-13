@@ -29,26 +29,30 @@ export async function getForUser(userId, plantId) {
   return rows[0]
 }
 
+function isHttpUrl(s) {
+  return typeof s === 'string' && /^https?:\/\//i.test(s)
+}
+
 export async function createForUser(userId, payload) {
-  // Handle image upload if photo is provided as base64
-  let photoUrl = payload.photo ?? null;
+  let photoUrl = null
 
   if (payload.photo && typeof payload.photo === 'string') {
-    // If photo is a base64 string, upload to ImgBB
-    try {
-      // Remove data URL prefix if present (e.g., 'data:image/jpeg;base64,')
-      let base64Image = payload.photo;
-      if (base64Image.includes('base64,')) {
-        base64Image = base64Image.split('base64,')[1];
+    if (isHttpUrl(payload.photo)) {
+      // Already a hosted URL (from Trefle, etc.) — use as-is
+      photoUrl = payload.photo
+    } else {
+      // Assume base64 → upload to ImgBB
+      try {
+        let base64Image = payload.photo
+        if (base64Image.includes('base64,')) {
+          base64Image = base64Image.split('base64,')[1]
+        }
+        const uploadResult = await uploadImageToImgbb(base64Image, env.IMGBB_API_KEY)
+        photoUrl = uploadResult.url
+      } catch (error) {
+        console.error('Error uploading image to ImgBB:', error)
+        photoUrl = null
       }
-
-      const uploadResult = await uploadImageToImgbb(base64Image, env.IMGBB_API_KEY);
-      photoUrl = uploadResult.url;
-    } catch (error) {
-      console.error('Error uploading image to ImgBB:', error);
-      // If upload fails, we can either proceed without the photo or throw an error
-      // For now, we'll proceed without the photo to avoid breaking the flow
-      photoUrl = null;
     }
   }
 
@@ -122,7 +126,7 @@ export async function updateForUser(userId, plantId, patch) {
       values,
     )
   }
-  
+
   const plant = await getForUser(userId, plantId)
   emitToUser(userId, 'plant:updated', plant)
 

@@ -230,8 +230,7 @@ function SystemPanel() {
           <h3>Database Snapshot</h3>
         </div>
         <p className="muted" style={{ fontSize: 13 }}>
-          {state.library.length} species &middot; {state.plants.length} user plants tracked &middot;{' '}
-          {state.tasks.length} scheduled tasks
+          {state.library.length} species
         </p>
         <button
           className="btn btn-secondary btn-sm"
@@ -239,7 +238,7 @@ function SystemPanel() {
           style={{ marginTop: 12 }}
           onClick={() => actions.openModal('confirmReset')}
         >
-          Reset Prototype Data
+          Reset Plant Data
         </button>
       </div>
     </div>

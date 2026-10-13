@@ -19,6 +19,30 @@ const api = axios.create({
   },
 });
 
+function pickString(v) {
+  if (typeof v === 'string' && v.length) return v
+  if (v && typeof v === 'object' && typeof v.url === 'string' && v.url.length) return v.url
+  return null
+}
+
+function extractImageUrl(entity) {
+  if (!entity || typeof entity !== 'object') return null
+
+  if (Array.isArray(entity.images) && entity.images.length > 0) {
+    const first = entity.images[0]
+    if (typeof first === 'string' && first.length) return first
+    if (first && typeof first === 'object' && typeof first.url === 'string') return first.url
+  }
+
+  return (
+    pickString(entity.thumbnail) ||
+    pickString(entity.main_image) ||
+    pickString(entity.image_url) ||
+    pickString(entity.image) ||
+    null
+  )
+}
+
 /**
  * Fetch plants from Trefle API with pagination and optional search
  * @param {Object} params - Fetch parameters
@@ -149,52 +173,21 @@ export async function searchPlants({ page = 1, pageSize = 10, query = '' } = {})
  * @returns {Object} - Mapped plant data
  */
 export function mapPlantToRow(plant) {
-  // Extract the main image URL from various possible locations
-  let photoUrl = null;
+  const ms = plant.main_species ?? {}
 
-  // Try the standard images array first
-  if (plant.images && Array.isArray(plant.images) && plant.images.length > 0) {
-    // Handle case where images array contains objects with url property
-    if (plant.images[0] && typeof plant.images[0] === 'object' && plant.images[0].url) {
-      photoUrl = plant.images[0].url;
-    }
-    // Handle case where images array contains direct URLs
-    else if (typeof plant.images[0] === 'string') {
-      photoUrl = plant.images[0];
-    }
-  }
-
-  // Fallback: check for thumbnail or main_image properties
-  if (!photoUrl) {
-    if (plant.thumbnail && typeof plant.thumbnail === 'string') {
-      photoUrl = plant.thumbnail;
-    } else if (plant.thumbnail && typeof plant.thumbnail === 'object' && plant.thumbnail.url) {
-      photoUrl = plant.thumbnail.url;
-    } else if (plant.main_image && typeof plant.main_image === 'string') {
-      photoUrl = plant.main_image;
-    } else if (plant.main_image && typeof plant.main_image === 'object' && plant.main_image.url) {
-      photoUrl = plant.main_image.url;
-    }
-  }
-
-  // Fallback: check for image_url or similar direct properties
-  if (!photoUrl) {
-    if (plant.image_url && typeof plant.image_url === 'string') {
-      photoUrl = plant.image_url;
-    } else if (plant.image && typeof plant.image === 'string') {
-      photoUrl = plant.image;
-    } else if (plant.image && typeof plant.image === 'object' && plant.image.url) {
-      photoUrl = plant.image.url;
-    }
-  }
+  // Check the wrapper first, then main_species — Trefle returns the
+  // photo in different places depending on the endpoint.
+  const photoUrl = extractImageUrl(plant) || extractImageUrl(ms) || null
 
   return {
-    id: String(plant.main_species?.id ?? plant.id ??''),
-    common_name: plant.common_name ?? '',
-    scientific_name: plant.scientific_name ?? '',
-    description: (plant.description ?? plant.bibliography ?? `${plant.year ?? ''}`.trim()) || null,
+    id: String(ms.id ?? plant.id ?? ''),
+    common_name: plant.common_name ?? ms.common_name ?? '',
+    scientific_name: plant.scientific_name ?? ms.scientific_name ?? '',
+    description:
+      (plant.description ?? plant.bibliography ?? ms.description ?? `${plant.year ?? ''}`.trim()) ||
+      null,
     photo_url: photoUrl,
-  };
+  }
 }
 
 /**
@@ -340,90 +333,54 @@ export async function getOrFetchSpecies(speciesId) {
  * @returns {Object} - Mapped species data
  */
 export function mapSpeciesToRow(species) {
-  const growth = species.growth ?? species.main_species?.growth ?? {};
-  // Extract the main image URL from various possible locations
-  let photoUrl = null;
+  const ms = species.main_species ?? {}
+  const growth = species.growth ?? ms.growth ?? {}
 
-  // Try the standard images array first
-  if (species.images && Array.isArray(species.images) && species.images.length > 0) {
-    // Handle case where images array contains objects with url property
-    if (species.images[0] && typeof species.images[0] === 'object' && species.images[0].url) {
-      photoUrl = species.images[0].url;
-    }
-    // Handle case where images array contains direct URLs
-    else if (typeof species.images[0] === 'string') {
-      photoUrl = species.images[0];
-    }
-  }
+  const photoUrl = extractImageUrl(species) || extractImageUrl(ms) || null
 
-  // Fallback: check for thumbnail or main_image properties
-  if (!photoUrl) {
-    if (species.thumbnail && typeof species.thumbnail === 'string') {
-      photoUrl = species.thumbnail;
-    } else if (species.thumbnail && typeof species.thumbnail === 'object' && species.thumbnail.url) {
-      photoUrl = species.thumbnail.url;
-    } else if (species.main_image && typeof species.main_image === 'string') {
-      photoUrl = species.main_image;
-    } else if (species.main_image && typeof species.main_image === 'object' && species.main_image.url) {
-      photoUrl = species.main_image.url;
-    }
-  }
-
-  // Fallback: check for image_url or similar direct properties
-  if (!photoUrl) {
-    if (species.image_url && typeof species.image_url === 'string') {
-      photoUrl = species.image_url;
-    } else if (species.image && typeof species.image === 'string') {
-      photoUrl = species.image;
-    } else if (species.image && typeof species.image === 'object' && species.image.url) {
-      photoUrl = species.image.url;
-    }
-  }
-
-  // Map Trefle species data to frontend expected values
   // Light: map growth.light (0-10 scale) to light conditions
-  let light = '—'; // Default value
-  const lightValue = growth?.light == null ? null : parseFloat(growth.light);
+  let light = '—'
+  const lightValue = growth?.light == null ? null : parseFloat(growth.light)
   if (Number.isFinite(lightValue)) {
-    if (lightValue >= 8) light = 'Full Sun';
-    else if (lightValue >= 6) light = 'Bright Indirect';
-    else if (lightValue >= 5) light = 'Partial shade';
-    else if (lightValue >= 3) light = 'Medium light';
-    else light = 'Low light';
+    if (lightValue >= 8) light = 'Full Sun'
+    else if (lightValue >= 6) light = 'Bright Indirect'
+    else if (lightValue >= 5) light = 'Partial shade'
+    else if (lightValue >= 3) light = 'Medium light'
+    else light = 'Low light'
   }
 
   // Watering: map growth.soil_humidity (0-10 scale) to watering frequency
-  // Higher value = higher water need = more frequent watering
-  let watering = '—'; // Default value
-  const humidityValue = growth?.soil_humidity == null ? null : parseFloat(growth.soil_humidity);
+  let watering = '—'
+  const humidityValue = growth?.soil_humidity == null ? null : parseFloat(growth.soil_humidity)
   if (Number.isFinite(humidityValue)) {
-    if (humidityValue >= 8) watering = 'Every 3 Days';
-    else if (humidityValue >= 6) watering = 'Weekly';
-    else if (humidityValue >= 4) watering = 'Every 10 Days';
-    else watering = 'Every 2 Weeks';
+    if (humidityValue >= 8) watering = 'Every 3 Days'
+    else if (humidityValue >= 6) watering = 'Weekly'
+    else if (humidityValue >= 4) watering = 'Every 10 Days'
+    else watering = 'Every 2 Weeks'
   }
 
   // Fertilizing: map growth.soil_nutriments (0-10 scale) to fertilizing frequency
-  // Higher value = higher nutrient need = more frequent fertilizing
-  let fertilizing = '—'; // Default value
-  const nutrimentsValue = growth?.soil_nutriments == null ? null : parseFloat(growth.soil_nutriments);
+  let fertilizing = '—'
+  const nutrimentsValue = growth?.soil_nutriments == null ? null : parseFloat(growth.soil_nutriments)
   if (Number.isFinite(nutrimentsValue)) {
-    if (nutrimentsValue >= 8) fertilizing = 'Seasonal';
-    else if (nutrimentsValue >= 6) fertilizing = 'Every 2 Weeks';
-    else if (nutrimentsValue >= 4) fertilizing = 'Monthly';
-    else fertilizing = 'Every 6 Weeks';
+    if (nutrimentsValue >= 8) fertilizing = 'Seasonal'
+    else if (nutrimentsValue >= 6) fertilizing = 'Every 2 Weeks'
+    else if (nutrimentsValue >= 4) fertilizing = 'Monthly'
+    else fertilizing = 'Every 6 Weeks'
   }
 
   return {
-    id: String(species.id ?? ''),
-    common_name: species.common_name ?? '',
-    scientific_name: species.scientific_name ?? '',
+    id: String(species.id ?? ms.id ?? ''),
+    common_name: species.common_name ?? ms.common_name ?? '',
+    scientific_name: species.scientific_name ?? ms.scientific_name ?? '',
     light,
     watering,
     fertilizing,
-    description: (species.description ?? species.bibliography ?? `${species.year ?? ''}`.trim()) || null,
+    description:
+      (species.description ?? species.bibliography ?? ms.description ?? `${species.year ?? ''}`.trim()) ||
+      null,
     photo_url: photoUrl,
-  };
+  }
 }
 
 /**

@@ -33,9 +33,7 @@ export const search = asyncHandler(async (req, res) => {
   }
 
   const { data, meta } = await trefleService.fetchPlants({ page, pageSize, query: q })
-  const rows = data.map(trefleService.mapPlantToRow)
   for (const r of rows) await trefleService.upsertSpecies(r)
-
   res.json({ source: 'trefle', data: rows, meta })
 })
 
