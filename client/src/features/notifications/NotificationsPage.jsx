@@ -1,6 +1,7 @@
 import { goTo } from '../../app/routes.js'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDate } from '../../shared/utils/date.js'
+import { notificationIcon } from '../../shared/utils/plants.js'
 
 export function NotificationsPage() {
   const { state, actions } = useGreenCare()
@@ -27,9 +28,9 @@ export function NotificationsPage() {
       <div className="notif-list notif-list--page">
         {notifications.length ? notifications.map((notice) => (
           <button className={notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotice(notice)}>
-            <img className="n-icon" src={notice.icon} alt="" />
+            <img className="n-icon" src={notificationIcon(notice.type)} alt="" />
             <span>
-              <span className="n-text">{notice.text}</span>
+              <span className="n-text">{notice.title}</span>
               <span className="n-time">{fmtDate(notice.notice_date)}</span>
             </span>
           </button>

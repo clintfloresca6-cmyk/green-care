@@ -2,7 +2,7 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDate } from '../../shared/utils/date.js'
 import { activityIcon } from '../../shared/utils/plants.js'
 import { useState, useEffect } from 'react'
-import { Modal } from './Modal.jsx'
+import { Modal } from './JournalModal.jsx'
 
 export function JournalPage() {
   const { state, actions } = useGreenCare()

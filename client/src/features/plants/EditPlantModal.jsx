@@ -50,8 +50,8 @@ export function EditPlantModal({ plantId, onClose }) {
 
         const plantData = {
           name: data.name.trim(),
-          speciesName: data.species.trim(),
-          speciesId: speciesId,
+          species_name: data.species.trim(),
+          species_id: speciesId,
           location: data.location || null,
           light: data.light || null,
           watering: data.watering || null,

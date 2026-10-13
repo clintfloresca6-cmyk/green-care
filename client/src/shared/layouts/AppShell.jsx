@@ -3,9 +3,10 @@ import { goTo, navItems } from '../../app/routes.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
-import notificationIcon from '../../assets/bell1.svg'
+import notificationActionIcon from '../../assets/bell1.svg'
 import settingsIcon from '../../assets/gear.svg'
 import logoutIcon from '../../assets/logout.svg'
+import { notificationIcon } from '../utils/plants.js'
 
 export function AppShell({ page, children }) {
   const { state, actions, unreadCount } = useGreenCare()
@@ -29,12 +30,12 @@ export function AppShell({ page, children }) {
     if (event.key !== 'Enter') return
     const query = event.currentTarget.value.trim().toLowerCase()
     if (!query) return
-    const plant = state.plants.find((item) => item.name.toLowerCase().includes(query) || item.species.toLowerCase().includes(query))
+    const plant = state.plants.find((item) => item.common_name.toLowerCase().includes(query) || item.species_name.toLowerCase().includes(query))
     if (plant) {
       goTo('plants', plant.id)
       return
     }
-    const species = state.library.find((item) => item.common.toLowerCase().includes(query) || item.scientific.toLowerCase().includes(query))
+    const species = state.library.find((item) => item.common_name.toLowerCase().includes(query) || item.scientific_scientific.toLowerCase().includes(query))
     if (species) {
       goTo('library')
       actions.toast(`Showing Plant Library for "${event.currentTarget.value.trim()}"`)
@@ -133,7 +134,7 @@ export function AppShell({ page, children }) {
                     setNotifOpen((open) => !open)
                   }}
                 >
-                  <img src={notificationIcon} alt="Notifications" />
+                  <img src={notificationActionIcon} alt="Notifications" />
                   {unreadCount > 0 ? <span className="dot-badge"><p style={{ color: 'white' }}>{ unreadCount }</p></span> : null}
                 </button>
                 {notifOpen ? <NotificationPanel close={() => setNotifOpen(false)} /> : null}
@@ -160,6 +161,7 @@ function NotificationPanel({ close }) {
 
   function openNotification(notice) {
     actions.markNotificationRead(notice.id)
+    console.log(notice)
     close()
     if (notice.page === 'plants' && notice.plantId) goTo('plants', notice.plantId)
     else if (notice.page) goTo(notice.page)
@@ -177,10 +179,11 @@ function NotificationPanel({ close }) {
       <div className="notif-list">
         {sorted.length ? sorted.map((notice) => (
           <button className={notice.is_read ? 'notif-item' : 'notif-item unread'} key={notice.id} type="button" onClick={() => openNotification(notice)}>
-            <span className="n-icon"><img src={notice.icon} alt="" /></span>
+            <span className="n-icon"><img src={notificationIcon(notice.type)} alt="" /></span>
             {!notice.is_read && <span className="dot-badge"></span>}
             <span>
-              <span className="n-text">{notice.text}</span>
+              <span className="n-text">{notice.title}</span>
+              {notice.body ? <span className="n-body">{notice.body}</span> : null}
               <span className="n-time">{notice.notice_date}</span>
             </span>
           </button>

@@ -76,3 +76,55 @@ export async function createForUser(userId, payload) {
   )
   return rows[0]
 }
+
+export async function updateForUser(userId, entryId, patch) {
+  // Ownership check
+  const [owned] = await pool.query(
+    'SELECT id FROM journal_entries WHERE id = ? AND user_id = ?',
+    [entryId, userId],
+  )
+  if (!owned.length) throw new ApiError(404, 'Journal entry not found')
+
+  const fields = []
+  const values = []
+
+  if (patch.plant_id !== undefined) {
+    // If changing plant, verify ownership
+    if (patch.plant_id) {
+      const [plantOwned] = await pool.query(
+        'SELECT id FROM plants WHERE id = ? AND user_id = ?',
+        [patch.plant_id, userId],
+      )
+      if (!plantOwned.length) throw new ApiError(404, 'Plant not found')
+    }
+    fields.push('plant_id = ?')
+    values.push(patch.plant_id)
+  }
+
+  if (patch.activity !== undefined) {
+    fields.push('activity = ?')
+    values.push(patch.activity)
+  }
+  if (patch.entry_date !== undefined) {
+    fields.push('entry_date = ?')
+    values.push(patch.entry_date)
+  }
+  if (patch.notes !== undefined) {
+    fields.push('notes = ?')
+    values.push(patch.notes)
+  }
+
+  if (!fields.length) {
+    const [rows] = await pool.query('SELECT * FROM journal_entries WHERE id = ?', [entryId])
+    return rows[0]
+  }
+
+  values.push(entryId, userId)
+  await pool.query(
+    `UPDATE journal_entries SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    values,
+  )
+
+  const [rows] = await pool.query('SELECT * FROM journal_entries WHERE id = ?', [entryId])
+  return rows[0]
+}

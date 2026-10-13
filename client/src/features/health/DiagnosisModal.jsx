@@ -131,13 +131,12 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
         // Create event notification for health update
         try {
             const notificationPayload = {
-                id: `event-health-updated-${Date.now()}`,
-                text: `Health updated to ${result} for ${state.plants.find(p => p.id === selectedPlantId)?.name || 'a plant'}`,
-                icon: warningIcon,
+                type: 'health_alert',
+                title: `Health updated to ${result} for ${state.plants.find(p => p.id === selectedPlantId)?.name || 'a plant'}`,
+                body: `${state.plants.find(p => p.id === selectedPlantId)?.name || 'a plant'} was diagnosed via AI`,
                 notice_date: todayISO(),
-                is_read: false,
                 page: 'plants',
-                plantId: selectedPlantId
+                plantId: selectedPlantId,
             }
             actions.addNotification(notificationPayload)
         } catch (notificationError) {
@@ -177,7 +176,7 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
                         >
                             {state.plants.map((plant) => (
                                 <option key={plant.id} value={plant.id}>
-                                    {plant.name} - {plant.species}
+                                    {plant.name} - {plant.species_name}
                                 </option>
                             ))}
                         </select>
@@ -186,7 +185,7 @@ export function DiagnosisModal({ preselectPlantId, onClose }) {
                     {phase === 'idle' ? (
                         <>
                             <label className="dropzone">
-                                {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
+                                {photo ? <><img src={photo} alt="Uploaded plant" /><p className="muted" style={{ marginTop: 8 }}>Photo ready; click Analyze Plant.</p></> : <><strong>Drag & drop a photo here</strong><p className="muted" style={{ display: 'flex', justifyContent: 'center', fontSize: 12.5, marginTop: 4 }}>Get an AI-powered analysis of your plant's health.</p></>}
                                 <input type="file" accept="image/*" hidden onChange={(event) => {
                                     const file = event.target.files?.[0];
                                     if (file) {

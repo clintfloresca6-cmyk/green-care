@@ -11,8 +11,8 @@ export function createApp() {
   const app = express()
 
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }))
-  app.use(express.json({ limit: '10mb' }))
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+  app.use(express.json({ limit: '8mb' }))
+  app.use(express.urlencoded({ extended: true, limit: '8mb' }))
 
   // Session configuration
   app.use(session({

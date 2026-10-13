@@ -23,11 +23,14 @@ export const get = asyncHandler(async (req, res) => {
 
 export const create = asyncHandler(async (req, res) => {
   const created = await notificationsService.createForUser(req.user.id, {
-    text:        req.body.text ?? req.body.message ?? 'Notification',
-    icon:        req.body.icon,
+    type: req.body.type ?? 'system',
+    title: req.body.title ?? req.body.text ?? 'Notification',
+    body: req.body.body ?? null,
+    dedupe_key: req.body.dedupe_key,
     notice_date: req.body.notice_date,
-    page:        req.body.page,
-    plantId:     req.body.plantId,
+    page: req.body.page,
+    plantId: req.body.plantId,
+    taskId: req.body.taskId,
   })
   res.status(201).json({ data: created })
 })

@@ -1,7 +1,6 @@
 import { fmtDateShort, todayISO } from '../utils/date.js'
-import { computeTaskStatus, taskIcon } from '../utils/plants.js'
+import { computeTaskStatus, taskIcon, TASK_TYPE_TO_ACTIVITY } from '../utils/plants.js'
 import { useGreenCare } from '../context/GreenCareContext.jsx'
-import calendarIcon from '../../assets/calendar1.svg'
 
 export function TaskRow({ task, plant, onEdit }) {
   const { actions } = useGreenCare()
@@ -44,11 +43,10 @@ export function TaskRow({ task, plant, onEdit }) {
       const journalPayload = {
         plant_id: task.plantId,
         entry_date: task.date,
-        activity: `${task.type}ed`,
+        activity: TASK_TYPE_TO_ACTIVITY[task.type] ?? task.type,
         notes: `Task "${task.type}" for plant "${plant?.name || ''}" completed on ${task.date}.`
       }
       await actions.createJournalEntry(journalPayload)
-      console.log('Journal entry created for task completion:', journalPayload)
     } catch (journalError) {
       console.error('Failed to create journal entry:', journalError)
       // Don't throw - we still want the task to be marked as complete even if journal fails
@@ -57,12 +55,12 @@ export function TaskRow({ task, plant, onEdit }) {
     // Create event notification for task completion
     try {
       const notificationPayload = {
-        id: `event-task-completed-${Date.now()}`,
-        text: `Completed "${task.type}" task for ${plant?.name || 'a plant'}`,
-        icon: calendarIcon, // Using calendar icon for task events
-        notice_date: new Date().toISOString().slice(0, 10),
-        is_read: false,
-        page: 'schedule'
+        type: 'system',
+        title: `Completed "${task.type}" for ${plant?.name || 'a plant'}`,
+        notice_date: todayISO(),
+        page: 'schedule',
+        plantId: task.plantId,
+        taskId: task.id,
       }
       await actions.addNotification(notificationPayload)
     } catch (notificationError) {
@@ -75,12 +73,12 @@ export function TaskRow({ task, plant, onEdit }) {
       <span className="t-icon"><img src={taskIcon(task.type)} /></span>
       <div className="t-body">
         <div className="t-title">{task.type} {plant?.name || ''}</div>
-        <div className="t-sub">{plant?.species || ''} · {task.time}</div>
+        <div className="t-sub">{plant?.species_name || plant?.common_name} · {task.time}</div>
       </div>
       <span className={`badge ${badgeClass}`}>{badgeText}</span>
       {status !== 'completed' ? (
         <>
-          <button className="btn btn-primary btn-sm me-2" type="button" onClick={handleCompleteTask}>
+          <button className="btn btn-primary btn-sm me-2" type="button" onClick={() => actions.completeTask(task)}>
             Complete
           </button>
           <button className="btn btn-secondary btn-sm" type="button" onClick={() => onEdit && onEdit(task)}>

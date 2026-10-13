@@ -3,7 +3,7 @@ import { goTo } from '../../app/routes.js'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, taskIcon } from '../../shared/utils/plants.js'
-import { Modal } from '../../features/library/Modal.jsx'
+import { Modal } from '../../features/library/LibraryModal.jsx'
 import locationIcon from '../../assets/location.svg'
 
 const filters = [

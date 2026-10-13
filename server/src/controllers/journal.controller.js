@@ -25,11 +25,7 @@ export const get = asyncHandler(async (req, res) => {
 })
 
 export const update = asyncHandler(async (req, res) => {
-  // For simplicity, we'll reuse the create service function
-  // In a real app, you'd have an updateForUser function in the service
-  const entry = await journalService.createForUser(req.user.id, req.body)
-  // Note: This doesn't actually update the existing entry, it creates a new one
-  // A proper implementation would update the existing entry with req.params.id
+  const entry = await journalService.updateForUser(req.user.id, req.params.id, req.body)
   res.json({ data: entry })
 })
 

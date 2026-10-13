@@ -3,7 +3,7 @@ import { TaskRow } from '../../shared/components/TaskRow.jsx'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus, taskIcon } from '../../shared/utils/plants.js'
-import { Modal } from './Modal.jsx'
+import { Modal } from './ScheduleModal.jsx'
 
 const taskFilters = ['all', 'today', 'upcoming', 'overdue', 'completed']
 
@@ -157,7 +157,7 @@ export function SchedulePage() {
                 <div><span className={`priority-dot priority-${task.priority}`}></span>{task.priority}</div>
                 <div className='task-status'>
                   <span className={`badge ${badgeClass}`}>{label(status)}</span>
-                  {status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task.id)}>Complete</button> : null}
+                  {status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task)}>Complete</button> : null}
                   {repeatChip() && <span className="repeat-chip"> {repeatChip()}</span>}
                 </div>
               </div>

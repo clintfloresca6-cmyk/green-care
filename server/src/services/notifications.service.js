@@ -6,8 +6,8 @@ import { sendPushToUser } from './push.service.js'
 export async function listForUser(userId) {
   const [rows] = await pool.query(
     `SELECT * FROM notifications
-      WHERE user_id = ?
-      ORDER BY is_read ASC, notice_date DESC, created_at DESC`,
+      WHERE user_id = ? AND dismissed_at IS NULL
+      ORDER BY is_read ASC, created_at DESC`,
     [userId],
   )
   return rows
@@ -32,49 +32,65 @@ export async function markAllRead(userId) {
   )
 }
 
-export async function createForUser(userId, { text, icon, notice_date, page, plantId }) {
-  const id = randomUUID().replace(/-/g, '').slice(0, 26)
-  const date = notice_date ?? new Date().toISOString().slice(0, 10)
-
-  await pool.query(
-    `INSERT INTO notifications
-       (id, user_id, icon, text, notice_date, is_read, page, plant_id, created_at)
-     VALUES (?, ?, ?, ?, ?, 0, ?, ?, NOW())`,
-    [id, userId, icon ?? '🌱', text, date, page ?? null, plantId ?? null],
-  )
-
-  sendPushToUser(userId, {
-    title: 'GreenCare',
-    body: text,
-    data: {
-      notificationId: id,
-      page: page ?? '',
-      plantId: plantId ?? '',
-      link: buildLink(page, plantId),
-    },
-  }).catch(err => console.error('[push] send failed:', err))
-
-  const [rows] = await pool.query('SELECT * FROM notifications WHERE id = ?', [id])
-  return rows[0]
-}
-
 function buildLink(page, plantId) {
   if (page === 'plants' && plantId) return `/#/plants/${plantId}`
   if (page) return `/#/${page}`
   return '/'
 }
 
+export async function createForUser(userId, {
+  type = 'system',
+  title,
+  body = null,
+  dedupe_key,
+  notice_date,
+  page = null,
+  plantId = null,
+  taskId = null,
+}) {
+  const id = randomUUID().replace(/-/g, '').slice(0, 26)
+  const date = notice_date ?? new Date().toISOString().slice(0, 10)
+  const key = dedupe_key ?? `${type}:${id}`
+
+  const [result] = await pool.query(
+    `INSERT INTO notifications
+       (id, user_id, dedupe_key, type, title, body,
+        notice_date, is_read, page, plant_id, task_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE id = id`,
+    [id, userId, key, type, title, body, date, page, plantId, taskId],
+  )
+
+  if (result.affectedRows === 1) {
+    // Fresh insert → fire push
+    sendPushToUser(userId, {
+      title: 'GreenCare',
+      body: title,
+      data: {
+        notificationId: id,
+        page: page ?? '',
+        plantId: plantId ?? '',
+        link: buildLink(page, plantId),
+      },
+    }).catch(err => console.error('[push] send failed:', err))
+
+    const [rows] = await pool.query('SELECT * FROM notifications WHERE id = ?', [id])
+    return rows[0]
+  }
+
+  // Dedupe conflict → return the existing row
+  const [rows] = await pool.query(
+    'SELECT * FROM notifications WHERE user_id = ? AND dedupe_key = ?',
+    [userId, key],
+  )
+  return rows[0] ?? null
+}
+
 export async function clearAll(userId) {
   await pool.query('DELETE FROM notifications WHERE user_id = ?', [userId])
 }
 
-/**
- * Scan for users with overdue tasks and create one notification per user
- * per day. Uses a deterministic notification ID so re-runs on the same day
- * are no-ops.
- */
 export async function scanOverdueTasks() {
-  // Find every user who currently has at least one overdue task
   const [users] = await pool.query(`
     SELECT DISTINCT t.user_id
     FROM tasks t
@@ -85,6 +101,7 @@ export async function scanOverdueTasks() {
   `)
 
   const today = new Date().toISOString().slice(0, 10)
+  const dedupe_key = `task_overdue:daily:${today}`
 
   for (const { user_id } of users) {
     const [[{ count }]] = await pool.query(`
@@ -99,36 +116,28 @@ export async function scanOverdueTasks() {
 
     if (!count) continue
 
-    // Deterministic per-user-per-day ID. If it already exists, the
-    // INSERT below is a no-op and we skip the push.
-    const id = `overdue-${user_id}-${today}`.slice(0, 32)
-    const text = count === 1 ? '1 task is overdue' : `${count} tasks are overdue`
+    const title = count === 1 ? '1 task is overdue' : `${count} tasks are overdue`
+    const id = randomUUID().replace(/-/g, '').slice(0, 26)
 
     const [result] = await pool.query(
       `INSERT INTO notifications
-         (id, user_id, icon, text, notice_date, is_read, page, created_at)
-       VALUES (?, ?, '⚠', ?, CURDATE(), 0, 'schedule', NOW())
+         (id, user_id, dedupe_key, type, title, body,
+          notice_date, is_read, page, created_at)
+       VALUES (?, ?, ?, 'task_overdue', ?, NULL, CURDATE(), 0, 'schedule', NOW())
        ON DUPLICATE KEY UPDATE id = id`,
-      [id, user_id, text],
+      [id, user_id, dedupe_key, title],
     )
 
-    // MySQL returns 1 for a fresh insert, 0 for a no-op update on a
-    // duplicate key. So this branch fires exactly once per user per day.
     if (result.affectedRows === 1) {
       sendPushToUser(user_id, {
         title: 'GreenCare',
-        body: text,
+        body: title,
         data: { page: 'schedule', link: '/#/schedule' },
       }).catch(err => console.error('[push] overdue send failed:', err))
     }
   }
 }
 
-/**
- * Scan for users with tasks due today and create/refresh one notification
- * per user per day. Re-fires the push every 5 hours until the user marks
- * the notification as read.
- */
 export async function scanUpcomingTasks() {
   const [users] = await pool.query(`
     SELECT DISTINCT t.user_id
@@ -139,7 +148,8 @@ export async function scanUpcomingTasks() {
       AND p.archived_at IS NULL
   `)
 
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const today = new Date().toISOString().slice(0, 10)
+  const dedupe_key = `task_due:daily:${today}`
   const RENOTIFY_AFTER_HOURS = 5
   let notified = 0
 
@@ -156,41 +166,39 @@ export async function scanUpcomingTasks() {
 
     if (!count) continue
 
-    const id = `td-${user_id.slice(0, 12)}-${today}`.slice(0, 32)
-    const text = count === 1 ? '1 task is due today' : `${count} tasks are due today`
+    const title = count === 1 ? '1 task is due today' : `${count} tasks are due today`
 
     const [[existing]] = await pool.query(
-      'SELECT id, is_read, created_at FROM notifications WHERE id = ?',
-      [id],
+      'SELECT id, is_read, created_at FROM notifications WHERE user_id = ? AND dedupe_key = ?',
+      [user_id, dedupe_key],
     )
 
     // Already acknowledged by the user → nothing to do today
     if (existing && existing.is_read) continue
 
-    // Exists, unread, still within the cooldown window → skip
-    if (existing && !existing.is_read) {
+    if (existing) {
       const hoursSince = (Date.now() - new Date(existing.created_at).getTime()) / 3_600_000
       if (hoursSince < RENOTIFY_AFTER_HOURS) continue
 
-      // Cooldown elapsed → refresh text + timestamp, then push
       await pool.query(
-        'UPDATE notifications SET text = ?, created_at = NOW() WHERE id = ?',
-        [text, id],
+        'UPDATE notifications SET title = ?, created_at = NOW() WHERE id = ?',
+        [title, existing.id],
       )
     } else {
-      // No row today yet → insert it
+      const id = randomUUID().replace(/-/g, '').slice(0, 26)
       await pool.query(
         `INSERT INTO notifications
-           (id, user_id, icon, text, notice_date, is_read, page, created_at)
-         VALUES (?, ?, '📅', ?, CURDATE(), 0, 'schedule', NOW())`,
-        [id, user_id, text],
+           (id, user_id, dedupe_key, type, title, body,
+            notice_date, is_read, page, created_at)
+         VALUES (?, ?, ?, 'task_due', ?, NULL, CURDATE(), 0, 'schedule', NOW())`,
+        [id, user_id, dedupe_key, title],
       )
     }
 
     notified++
     sendPushToUser(user_id, {
       title: 'GreenCare',
-      body: text,
+      body: title,
       data: { page: 'schedule', link: '/#/schedule' },
     }).catch(err => console.error('[push] due-today send failed:', err))
   }

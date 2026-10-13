@@ -58,7 +58,7 @@ export async function createForUser(userId, payload) {
         light, watering, fertilizing, health, notes, photo_url, added_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE())`,
     [
-      id, userId, payload.speciesId ?? null, payload.name, payload.speciesName,
+      id, userId, payload.species_id ?? null, payload.name, payload.species_name,
       payload.location ?? null, payload.zone ?? 'indoor',
       payload.light ?? null, payload.watering ?? null,
       payload.fertilizing ?? null, payload.health ?? 'Good',

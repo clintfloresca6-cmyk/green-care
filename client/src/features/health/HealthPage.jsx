@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor, statusDotClass } from '../../shared/utils/plants.js'
-import { Modal } from './Modal.jsx'
+import { Modal } from './HealthModal.jsx'
 import { DiagnosisModal } from './DiagnosisModal.jsx'
 
 export function HealthPage() {

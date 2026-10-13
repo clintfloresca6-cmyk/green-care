@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor } from '../../shared/utils/plants.js'
-import { Modal } from './Modal.jsx'
+import { Modal } from './LibraryModal.jsx'
 
 
 export function LibraryPage() {

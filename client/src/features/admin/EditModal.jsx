@@ -24,14 +24,10 @@ export function Edit({ speciesId, onClose }) {
           fertilizing: data.fertilizing || '',
         };
 
-        console.log('Submitting species update data:', speciesData);
-
         // Call the saveSpecies action
         if (actions.saveSpecies) {
           await actions.saveSpecies(speciesId, speciesData);
         }
-
-        console.log('Species updated successfully:', speciesData);
 
         // Reset form on success
         setError('');

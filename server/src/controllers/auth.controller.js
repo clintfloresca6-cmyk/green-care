@@ -41,7 +41,6 @@ export const signup = asyncHandler(async (req, res) => {
 
 export const list = asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT id, name, email, role, photo_url, location, created_at FROM users')
-  console.log({ data: rows })
   res.json({ data: rows })
 })
 

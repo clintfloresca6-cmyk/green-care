@@ -21,6 +21,7 @@ export const updateTaskSchema = z.object({
   task_time: z.string().max(20).optional(),
   status: z.enum(['pending', 'completed', 'skipped', 'overdue']).optional(),
   priority: priority.optional(),
+  is_repeating: z.coerce.number().int().min(0).max(3650).optional(),
 })
 
 export const listTasksQuerySchema = z.object({

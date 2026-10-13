@@ -1,13 +1,23 @@
 import { z } from 'zod'
 
+const PHOTO_MAX_CHARS = 8_000_000
+
 export const createJournalSchema = z.object({
   plant_id: z.string().min(1).max(26).nullable().optional(),
   activity: z.string().min(1).max(64),
   entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD'),
   notes: z.string().max(2000).nullable().optional(),
-  photo: z.string().nullable().optional(),
+  photo: z.string().max(PHOTO_MAX_CHARS).nullable().optional(),
 })
 
 export const listJournalQuerySchema = z.object({
   plantId: z.string().min(1).max(26).optional(),
+})
+
+export const updateJournalSchema = z.object({
+  plant_id: z.string().min(1).max(26).nullable().optional(),
+  activity: z.string().min(1).max(64).optional(),
+  entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD').optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  photo: z.string().max(PHOTO_MAX_CHARS).nullable().optional(),
 })

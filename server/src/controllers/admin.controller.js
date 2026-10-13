@@ -41,10 +41,6 @@ export const archive = asyncHandler(async (req, res) => {
 })
 
 export const stats = asyncHandler(async (_req, res) => {
-  console.log('Admin stats endpoint called') // Debug log
   const snapshot = await adminService.stats()
-  console.log('Admin stats result:', snapshot) // Debug log
   res.json({ data: snapshot })
-
-  console.log(stats)
 })

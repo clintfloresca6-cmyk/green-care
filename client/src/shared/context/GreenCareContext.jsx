@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../features/auth/AuthContext'
+import { todayISO } from '../utils/date'
+import { TASK_TYPE_TO_ACTIVITY } from '../utils/plants'
 import calendarIcon from '../../assets/calendar1.svg'
 import warningIcon from '../../assets/warning.svg'
 import locationIcon from '../../assets/location.svg'
@@ -34,6 +36,7 @@ const toTask = (row) => ({
 
 export function GreenCareProvider({ children }) {
   const { currentUser: authUser } = useAuth()
+  const [dismissedDerived, setDismissedDerived] = useState(new Set())
 
   // Get theme from localStorage with fallback to 'light'
   const getStoredTheme = () => {
@@ -195,20 +198,22 @@ export function GreenCareProvider({ children }) {
 
     if (tasksDueToday > 0) {
       derivedNotifications.push({
-        id: `derived-tasks-due-today`,
-        text: `${tasksDueToday} task${tasksDueToday === 1 ? '' : 's'} due today`,
-        icon: calendarIcon,
+        id: 'derived-tasks-due-today',
+        type: 'task_due',
+        title: `${tasksDueToday} task${tasksDueToday === 1 ? '' : 's'} due today`,
+        body: null,
         notice_date: today,
         is_read: false,
-        page: 'schedule'
+        page: 'schedule',
       })
     }
 
     if (overdueTasks > 0) {
       derivedNotifications.push({
         id: `derived-overdue-tasks`,
-        text: `${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'}`,
-        icon: warningIcon,
+        type: 'task_overdue',
+        title: `${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'}`,
+        body: null,
         notice_date: today,
         is_read: false,
         page: 'schedule'
@@ -218,8 +223,9 @@ export function GreenCareProvider({ children }) {
     if (tasksDueThisWeek > 0) {
       derivedNotifications.push({
         id: `derived-tasks-this-week`,
-        text: `${tasksDueThisWeek} task${tasksDueThisWeek === 1 ? '' : 's'} due this week`,
-        icon: calendarIcon,
+        type: 'task_due_this_week',
+        title: `${tasksDueThisWeek} task${tasksDueThisWeek === 1 ? '' : 's'} due this week`,
+        body: null,
         notice_date: today,
         is_read: false,
         page: 'schedule'
@@ -229,18 +235,20 @@ export function GreenCareProvider({ children }) {
     return derivedNotifications
   }, [state.tasks, authUser])
 
-  // Update state with derived notifications when they change
+  // Merge stored notifications with the derived ones (minus any the user dismissed)
   useEffect(() => {
-    // Update state with derived notifications
-    // We'll merge them with existing notifications, giving derived ones stable IDs
+    const visibleDerived = derivedNotifications.filter(
+      (n) => !dismissedDerived.has(n.id),
+    )
+
     setState(prev => ({
       ...prev,
       notifications: [
-        ...prev.notifications.filter(n => n.id && !n.id.startsWith('derived-')), // Remove old derived notifications
-        ...derivedNotifications
-      ]
+        ...prev.notifications.filter(n => n.id && !n.id.startsWith('derived-')),
+        ...visibleDerived,
+      ],
     }))
-  }, [derivedNotifications])
+  }, [derivedNotifications, dismissedDerived])
 
   // Save theme to localStorage whenever it changes
   useEffect(() => {
@@ -355,10 +363,8 @@ export function GreenCareProvider({ children }) {
         try {
           const notificationPayload = {
             id: `event-plant-added-${Date.now()}`,
-            text: `Added new plant: ${payload.name || 'Unknown Plant'}`,
-            icon: locationIcon, // Using location icon for plant events
+            title: `Added new plant: ${payload.name || 'Unknown Plant'}`,
             notice_date: new Date().toISOString().slice(0, 10),
-            is_read: false,
             page: 'plants',
             plantId: result.data.id
           }
@@ -439,10 +445,8 @@ export function GreenCareProvider({ children }) {
         try {
           const notificationPayload = {
             id: `event-task-created-${Date.now()}`,
-            text: `New task created: ${payload.type || 'Task'} for plant`,
-            icon: calendarIcon, // Using calendar icon for task events
+            title: `New task created: ${payload.type || 'Task'} for plant`,
             notice_date: new Date().toISOString().slice(0, 10),
-            is_read: false,
             page: 'schedule'
           }
           // We don't await this as it's not critical if it fails
@@ -458,20 +462,66 @@ export function GreenCareProvider({ children }) {
       }
     },
 
-    async completeTask(taskId) {
+    async completeTask(task) {
+      // Accept the full task object, not just the id — callers have it anyway.
       try {
-        const result = await authFetch(`/tasks/${taskId}`, {
+        // 1. Mark the current task completed
+        const result = await authFetch(`/tasks/${task.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ status: 'completed' })
+          body: JSON.stringify({ status: 'completed' }),
         })
-        // Update the specific task
         const updated = toTask(result.data)
         setState(prev => ({
           ...prev,
-          tasks: prev.tasks.map(task =>
-            task.id === taskId ? updated : task
-          )
+          tasks: prev.tasks.map(t => t.id === task.id ? updated : t),
         }))
+
+        // 2. Spawn the next occurrence if repeating
+        if (task.is_repeating && task.is_repeating > 0) {
+          const today = todayISO()
+          const baseDate = task.date < today ? today : task.date
+          const [y, m, d] = baseDate.split('-').map(Number)
+          const next = new Date(Date.UTC(y, m - 1, d + task.is_repeating))
+          const newDateISO = next.toISOString().slice(0, 10)
+
+          const newTask = {
+            plant_id: task.plantId,
+            type: task.type,
+            task_date: newDateISO,
+            task_time: task.task_time,
+            priority: task.priority,
+            status: 'pending',
+            is_repeating: task.is_repeating,
+          }
+
+          const created = await authFetch('/tasks', {
+            method: 'POST',
+            body: JSON.stringify(newTask),
+          })
+          setState(prev => ({
+            ...prev,
+            tasks: [...prev.tasks, toTask(created.data)],
+          }))
+        }
+
+        // 3. Journal entry
+        const plant = state.plants.find(p => p.id === task.plantId)
+        await this.createJournalEntry({
+          plant_id: task.plantId,
+          entry_date: task.date,
+          activity: TASK_TYPE_TO_ACTIVITY[task.type] ?? task.type,
+          notes: `Task "${task.type}" for plant "${plant?.name || ''}" completed on ${task.date}.`,
+        }).catch(err => console.error('Journal entry failed:', err))
+
+        // 4. Event notification
+        await this.addNotification({
+          type: 'system',
+          title: `Completed "${task.type}" for ${plant?.name || 'a plant'}`,
+          notice_date: todayISO(),
+          page: 'schedule',
+          taskId: task.id,
+        }).catch(err => console.error('Notification failed:', err))
+
         return updated
       } catch (error) {
         console.error('Failed to complete task:', error)
@@ -532,21 +582,26 @@ export function GreenCareProvider({ children }) {
     },
 
     async markNotificationRead(notificationId) {
+      // Derived notifications live only in client state — nothing to PATCH.
+      if (notificationId.startsWith('derived-')) {
+        setDismissedDerived(prev => new Set(prev).add(notificationId))
+        return
+      }
+
       try {
         await authFetch(`/notifications/${notificationId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ is_read: true })
+          body: JSON.stringify({ is_read: true }),
         })
-        // Update the specific notification
         setState(prev => ({
           ...prev,
           notifications: prev.notifications.map(notif =>
             notif.id === notificationId ? { ...notif, is_read: true } : notif
-          )
+          ),
         }))
       } catch (error) {
+        // A failed read-marker isn't worth interrupting navigation.
         console.error('Failed to mark notification as read:', error)
-        throw error
       }
     },
 
@@ -647,7 +702,6 @@ export function GreenCareProvider({ children }) {
         ...prev,
         profile: prev.profile ? { ...prev.profile, ...profilePatch } : { ...profilePatch }
       }))
-      console.log(profilePatch)
       return profilePatch
     },
 
@@ -683,7 +737,7 @@ export function GreenCareProvider({ children }) {
           method: 'PATCH',
           body: JSON.stringify({ status })
         })
-        
+
         const updated = { ...(result?.data ?? result), id: reportId, status }
 
         setState(prev => ({

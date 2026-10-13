@@ -6,7 +6,7 @@ export const createReportSchema = z.object({
 });
 
 export const updateReportSchema = z.object({
-  subject: z.string().max(255).optional(),
+  subject: z.string().max(255).min().optional(),
   detail: z.string().max(255).nullable().optional(),
   status: z.union([z.literal('open'), z.literal('resolved'), z.literal('dismissed')]).optional()
 });

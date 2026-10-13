@@ -39,10 +39,11 @@ CREATE TABLE user_settings (
   overdue_reminders  TINYINT(1)  NOT NULL DEFAULT 1,
   health_alerts      TINYINT(1)  NOT NULL DEFAULT 1,
   browser_notifs     TINYINT(1)  NOT NULL DEFAULT 0,
-  theme              ENUM('light','dark') NOT NULL DEFAULT 'light',
+  theme              ENUM('light','dark','system') NOT NULL DEFAULT 'system',
   reminder_time      TIME        NOT NULL DEFAULT '08:00:00',
-  week_start         ENUM('mon','sun')    NOT NULL DEFAULT 'mon',
-  updated_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  week_start         ENUM('mon','sun') NOT NULL DEFAULT 'mon',
+  updated_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                 ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   CONSTRAINT fk_settings_user FOREIGN KEY (user_id)
     REFERENCES users(id) ON DELETE CASCADE
@@ -79,15 +80,16 @@ CREATE TABLE species_cache (
   common_name    VARCHAR(160) NOT NULL,
   scientific_name VARCHAR(190) NOT NULL,
   difficulty     ENUM('Beginner','Intermediate','Advanced') NOT NULL DEFAULT 'Beginner',
-  light          VARCHAR(80)  NOT NULL,
-  watering       VARCHAR(80)  NOT NULL,
-  fertilizing    VARCHAR(80)  NOT NULL,
+  light          VARCHAR(80)  NULL,          -- ← was NOT NULL
+  watering       VARCHAR(80)  NULL,          -- ← was NOT NULL
+  fertilizing    VARCHAR(80)  NULL,          -- ← was NOT NULL
   zone           ENUM('indoor','outdoor') NOT NULL DEFAULT 'indoor',
   light_level    ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   description    TEXT         NULL,
   photo_url      VARCHAR(500) NULL,
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                              ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_species_common (common_name),
   KEY idx_species_zone   (zone, light_level, difficulty)
@@ -211,12 +213,14 @@ CREATE TABLE tasks (
   plant_id     VARCHAR(32)  NOT NULL,
   type         ENUM('Water','Fertilize','Prune','Repot','Clean','Check','Rotate') NOT NULL,
   task_date    DATE         NOT NULL,
-  task_time    VARCHAR(20)  NOT NULL DEFAULT 'Anytime',   -- '8:00 AM' | 'Anytime'
-  status       ENUM('pending','completed','overdue') NOT NULL DEFAULT 'pending',
-  priority     ENUM('low','medium','high')           NOT NULL DEFAULT 'medium',
-  is_repeating INT     NULL,
+  task_time    VARCHAR(20)  NOT NULL DEFAULT 'Anytime',
+  status       ENUM('pending','completed','overdue','skipped') NOT NULL DEFAULT 'pending',
+  priority     ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
+  is_repeating INT          NULL,
+  completed_at DATETIME     NULL,                     -- ← added
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_tasks_user_date (user_id, task_date),
   KEY idx_tasks_plant     (plant_id),
@@ -238,6 +242,7 @@ CREATE TABLE journal_entries (
   entry_date   DATE         NOT NULL,
   notes        TEXT         NULL,
   photo_url    VARCHAR(500) NULL,
+  archived_at  DATETIME     NULL,                     -- ← added
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_journal_user_date (user_id, entry_date),
@@ -252,20 +257,28 @@ CREATE TABLE journal_entries (
 
 DROP TABLE IF EXISTS notifications;
 CREATE TABLE notifications (
-  id           VARCHAR(32)  NOT NULL,
+  id           VARCHAR(48)  NOT NULL,                 -- ← 48 so 'overdue-u_user-20251013' etc. fit
   user_id      VARCHAR(32)  NOT NULL,
-  icon         VARCHAR(16)  NOT NULL DEFAULT '🌱',
-  text         VARCHAR(500) NOT NULL,
+  dedupe_key   VARCHAR(255) NOT NULL,                 -- ← idempotency key
+  type         ENUM('task_due','task_overdue','health_alert','system','weekly_summary')
+                 NOT NULL DEFAULT 'system',
+  title        VARCHAR(160) NOT NULL,
+  body         VARCHAR(500) NULL,
   notice_date  DATE         NOT NULL,
   is_read      TINYINT(1)   NOT NULL DEFAULT 0,
   read_at      DATETIME     NULL,
-  page         VARCHAR(32)  NULL,       -- 'plants' | 'health' | 'schedule' | 'reports'
+  dismissed_at DATETIME     NULL,
+  page         VARCHAR(32)  NULL,
   plant_id     VARCHAR(32)  NULL,
+  task_id      VARCHAR(32)  NULL,                     -- ← link to source task
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_notif_user (user_id, is_read, notice_date),
+  UNIQUE KEY uq_notif_dedupe (user_id, dedupe_key),   -- ← the safety net
+  KEY idx_notif_unread    (user_id, is_read, created_at),
+  KEY idx_notif_type      (user_id, type, is_read),
   CONSTRAINT fk_notif_user  FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
-  CONSTRAINT fk_notif_plant FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE SET NULL
+  CONSTRAINT fk_notif_plant FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE SET NULL,
+  CONSTRAINT fk_notif_task  FOREIGN KEY (task_id)  REFERENCES tasks(id)  ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -544,16 +557,16 @@ INSERT INTO journal_entries (id, user_id, plant_id, activity, entry_date, notes)
   ('j12','u_user','p2','Checked Health',CURDATE() - INTERVAL 2 DAY, 'Noticed slight wilting, watching closely.');
 
 -- ── Notifications ───────────────────────────────────────────
-INSERT INTO notifications (id, user_id, icon, text, notice_date, is_read, page, plant_id) VALUES
-  ('n1','u_user','🌱','Luna needs watering today.',                    CURDATE(),                   0,'plants','p1'),
-  ('n2','u_user','🌿','Basil fertilizer is due today.',                CURDATE(),                   0,'plants','p2'),
-  ('n3','u_user','⚠','Peace Lily watering is overdue.',               CURDATE() - INTERVAL 1 DAY,  0,'plants','p8'),
-  ('n4','u_user','🪴',"Snake Plant hasn't been checked recently.",    CURDATE() - INTERVAL 1 DAY,  0,'plants','p4'),
-  ('n5','u_user','✂','Mint may need pruning soon; growing quickly.',  CURDATE() - INTERVAL 3 DAY,  1,'plants','p6'),
-  ('n6','u_user','🌸','Peace Lily is showing signs it needs attention.',CURDATE() - INTERVAL 1 DAY,0,'health',NULL),
-  ('n7','u_user','🌾','Spider Plant produced new offshoots.',         CURDATE() - INTERVAL 25 DAY, 1,'plants','p9'),
-  ('n8','u_user','🪴','Aloe Vera watering is coming up in 4 days.',   CURDATE(),                   1,'schedule',NULL),
-  ('n9','u_user','🌿','Weekly care summary is ready in Reports.',     CURDATE() - INTERVAL 2 DAY,  1,'reports',NULL);
+INSERT INTO notifications (id, user_id, dedupe_key, type, title, body, notice_date, is_read, page, plant_id) VALUES
+  ('n1','u_user','seed:n1','task_due',   'Luna needs watering today',      NULL, CURDATE(),                  0,'plants','p1'),
+  ('n2','u_user','seed:n2','task_due',   'Basil fertilizer is due today',  NULL, CURDATE(),                  0,'plants','p2'),
+  ('n3','u_user','seed:n3','task_overdue','Peace Lily watering is overdue', NULL, CURDATE() - INTERVAL 1 DAY, 0,'plants','p8'),
+  ('n4','u_user','seed:n4','system',     'Snake Plant needs a health check',NULL, CURDATE() - INTERVAL 1 DAY, 0,'plants','p4'),
+  ('n5','u_user','seed:n5','system',     'Mint may need pruning soon',     NULL, CURDATE() - INTERVAL 3 DAY, 1,'plants','p6'),
+  ('n6','u_user','seed:n6','health_alert','Peace Lily needs attention',    NULL, CURDATE() - INTERVAL 1 DAY, 0,'health',NULL),
+  ('n7','u_user','seed:n7','system',     'Spider Plant produced new offshoots', NULL, CURDATE() - INTERVAL 25 DAY, 1,'plants','p9'),
+  ('n8','u_user','seed:n8','task_due',   'Aloe Vera watering in 4 days',   NULL, CURDATE(),                  1,'schedule',NULL),
+  ('n9','u_user','seed:n9','weekly_summary','Weekly care summary is ready',NULL, CURDATE() - INTERVAL 2 DAY, 1,'reports',NULL);
 
 -- ── Activity feed ───────────────────────────────────────────
 INSERT INTO activity_log (user_id, text, occurred_at) VALUES

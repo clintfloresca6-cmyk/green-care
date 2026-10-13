@@ -8,7 +8,7 @@ import { createTaskSchema, updateTaskSchema, listTasksQuerySchema } from '../val
 const router = Router()
 router.use(currentUser, requireUser)
 
-router.get('/', taskController.list)
+router.get('/', validate(listTasksQuerySchema, 'query'), taskController.list)
 router.get('/:id', taskController.get)
 router.post('/', validate(createTaskSchema), taskController.create)
 router.patch('/:id', validate(updateTaskSchema), taskController.update)

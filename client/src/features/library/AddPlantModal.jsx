@@ -54,8 +54,8 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
 
         const plantData = {
           name,
-          speciesName: species,
-          speciesId,
+          species_name: species,
+          species_id: speciesId,
           location,
           light,
           watering,
@@ -64,14 +64,10 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
           photo: photoUrl, // Include photo (either base64 for upload or preview URL)
         };
 
-        console.log('Submitting plant data:', plantData);
-
         // Call the onAddPlant callback with the plant data
         if (onAddPlant) {
           await onAddPlant(plantData);
         }
-
-        console.log('Plant added successfully:', plantData);
 
         // Reset form on success
         setError('');

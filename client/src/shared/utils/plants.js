@@ -7,6 +7,9 @@ import cleanIcon from '../../assets/clean.svg'
 import healthIcon from '../../assets/stethoscope.svg'
 import otherIcon from '../../assets/other.svg'
 import rotateIcon from '../../assets/rotate.svg'
+import calendarIcon from '../../assets/calendar1.svg'
+import warningIcon from '../../assets/warning.svg'
+import systemIcon from '../../assets/system.svg'
 
 const PLANT_EMOJI = {
   'Monstera Deliciosa': '🌿',
@@ -19,6 +22,16 @@ const PLANT_EMOJI = {
   'Peace Lily': '🌸',
   'Spider Plant': '🌾',
   Basil: '🌱',
+}
+
+export const TASK_TYPE_TO_ACTIVITY = {
+  Water: 'Watered',
+  Fertilize: 'Fertilized',
+  Prune: 'Pruned',
+  Repot: 'Repotted',
+  Clean: 'Cleaned',
+  Check: 'Checked Health',
+  Rotate: 'Rotated',
 }
 
 export function emojiFor(species) {
@@ -63,6 +76,7 @@ export function activityIcon(activity) {
     Cleaned: cleanIcon,
     'Checked Health': healthIcon,
     Other: otherIcon,
+    Rotated: rotateIcon,
   }[activity] || otherIcon
 }
 
@@ -72,6 +86,16 @@ export function computeTaskStatus(task) {
   if (diff < 0) return 'overdue'
   if (diff === 0) return 'today'
   return 'upcoming'
+}
+
+export function notificationIcon(type) {
+  return {
+    task_due:       calendarIcon,
+    task_overdue:   warningIcon,
+    health_alert:   healthIcon,
+    weekly_summary: calendarIcon,
+    system:         systemIcon,
+  }[type] || systemIcon
 }
 
 export function avatarInitials(name) {

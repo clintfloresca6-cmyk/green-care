@@ -16,31 +16,25 @@ export const get = asyncHandler(async (req, res) => {
 })
 
 export const search = asyncHandler(async (req, res) => {
-  const { q = '', page = 1, pageSize = 20 } = req.query
+  const { q, page, pageSize } = req.validatedQuery ?? req.query
   const like = `%${q}%`
 
   const [cached] = await pool.query(
-    `SELECT id, common_name, scientific_name, description, photo_url, light, watering, fertilizing FROM species_cache
+    `SELECT id, common_name, scientific_name, description, photo_url, light, watering, fertilizing
+       FROM species_cache
       WHERE common_name LIKE ? OR scientific_name LIKE ?
       ORDER BY common_name
       LIMIT ? OFFSET ?`,
-    [like, like, Number(pageSize), (Number(page) - 1) * Number(pageSize)],
+    [like, like, pageSize, (page - 1) * pageSize],
   )
 
   if (cached.length) {
     return res.json({ source: 'cache', data: cached })
   }
 
-  const { data, meta } = await trefleService.fetchPlants({
-    page: Number(page),
-    pageSize: Number(pageSize),
-    query: q,
-  })
-
+  const { data, meta } = await trefleService.fetchPlants({ page, pageSize, query: q })
   const rows = data.map(trefleService.mapPlantToRow)
-  for (const r of rows) {
-    await trefleService.upsertSpecies(r)
-  }
+  for (const r of rows) await trefleService.upsertSpecies(r)
 
   res.json({ source: 'trefle', data: rows, meta })
 })

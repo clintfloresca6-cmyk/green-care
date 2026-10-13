@@ -8,10 +8,10 @@ import { searchLibrarySchema, speciesIdParamSchema } from '../validators/library
 const router = Router()
 router.use(currentUser, requireUser)
 
-router.get('/', libraryController.search)
-router.get('/:id', libraryController.getSpecies)
-router.post('/', libraryController.create) // TODO: Implement create function
-router.patch('/:id', libraryController.update) // TODO: Implement update function
-router.delete('/:id', libraryController.archive) // TODO: Implement archive function
+router.get('/', validate(searchLibrarySchema, 'query'), libraryController.search)
+router.get('/:id', validate(speciesIdParamSchema, 'params'), libraryController.getSpecies)
+router.post('/', libraryController.create) 
+router.patch('/:id', libraryController.update)
+router.delete('/:id', libraryController.archive)
 
 export default router

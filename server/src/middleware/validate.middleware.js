@@ -9,8 +9,9 @@ export const validate = (schema, source = 'body') => (req, _res, next) => {
   // Only assign to req[source] if it's writable
   // For read-only properties like req.query, store validated data elsewhere
   if (source === 'query') {
-    // req.query is read-only, store validated data in validatedQuery
     req.validatedQuery = result.data
+  } else if (source === 'params') {
+    req.validatedParams = result.data
   } else {
     req[source] = result.data
   }

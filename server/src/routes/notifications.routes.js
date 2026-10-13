@@ -14,9 +14,9 @@ router.delete('/push/subscribe',     notificationController.unsubscribePush)
 router.patch('/read-all',  notificationController.markAllRead)
 router.delete('/clear-all', notificationController.clearAll)
 router.get('/', notificationController.list)
-router.get('/:id', notificationController.get)
+router.get('/:id', validate(notificationIdParamSchema, 'params'), notificationController.get)
 router.post('/', notificationController.create)
-router.patch('/:id', notificationController.update)
-router.delete('/:id', notificationController.archive)
+router.patch('/:id', validate(notificationIdParamSchema, 'params'), notificationController.update)
+router.delete('/:id', validate(notificationIdParamSchema, 'params'), notificationController.archive)
 
 export default router

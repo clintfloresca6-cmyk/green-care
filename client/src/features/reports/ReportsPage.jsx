@@ -2,7 +2,7 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { daysBetween, fmtDate, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus } from '../../shared/utils/plants.js'
 import { useState } from 'react'
-import { Modal } from './Modal.jsx'
+import { Modal } from './ReportModal.jsx'
 
 const activityTypes = ['Watered', 'Fertilized', 'Pruned', 'Repotted', 'Cleaned', 'Checked Health']
 
@@ -65,7 +65,7 @@ export function ReportsPage() {
             {state.plants.slice(0, 5).map((plant) => (
               <div className="timeline-item" key={plant.id}>
                 <span className="timeline-dot"></span>
-                <div className="timeline-body"><div>{plant.name} added to collection</div><div className="timeline-date">{fmtDate(plant.added)}</div></div>
+                <div className="timeline-body"><div>{plant.name} added to collection</div><div className="timeline-date">{fmtDate(plant.added_at)}</div></div>
               </div>
             ))}
           </div>
