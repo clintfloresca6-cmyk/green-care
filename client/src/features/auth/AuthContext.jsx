@@ -54,16 +54,16 @@ export function AuthProvider({ children }) {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Login failed')
+        // Safely parse the error object from the backend
+        const errorData = await response.json().catch(() => ({}))
+        // Extract the .message from the { error: { message: "..." } } shape
+        throw new Error(errorData.error?.message || errorData.error || 'Login failed')
       }
 
       const userData = await response.json()
@@ -79,6 +79,10 @@ export function AuthProvider({ children }) {
       setCurrentUser(session)
       return { success: true }
     } catch (error) {
+      // Catch network errors (server is down/unreachable)
+      if (error.name === 'TypeError' || error.message.includes('fetch')) {
+        return { success: false, error: 'Failed to connect to server' }
+      }
       return { success: false, error: error.message }
     }
   }, [])
@@ -87,16 +91,14 @@ export function AuthProvider({ children }) {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name, email, password }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Signup failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || errorData.error || 'Signup failed')
       }
 
       const userData = await response.json()
@@ -112,6 +114,9 @@ export function AuthProvider({ children }) {
       setCurrentUser(session)
       return { success: true }
     } catch (error) {
+      if (error.name === 'TypeError' || error.message.includes('fetch')) {
+        return { success: false, error: 'Failed to connect to server' }
+      }
       return { success: false, error: error.message }
     }
   }, [])

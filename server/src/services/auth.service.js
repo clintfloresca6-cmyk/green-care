@@ -1,25 +1,28 @@
 import { pool } from '../config/db.js'
 import { ApiError } from '../utils/ApiError.js'
 import { randomUUID } from 'node:crypto'
+import bcrypt from 'bcryptjs'
 
 export async function login(email, password) {
+  // 1. Fetch the user, including the hashed password
   const [rows] = await pool.query(
-    'SELECT id, name, email, role, photo_url, location FROM users WHERE email = ?',
+    'SELECT id, name, email, role, photo_url, location, password_hash FROM users WHERE email = ?',
     [email.toLowerCase()],
   )
-  if (!rows.length) throw new ApiError(401, 'Invalid email or password')
 
-  // Note: schema stores password_hash. For Phase 1-5 (dev only) we compare
-  // plaintext temporarily, then swap to bcrypt in Phase 6.
-  const [pwRows] = await pool.query(
-    'SELECT password_hash FROM users WHERE id = ?',
-    [rows[0].id],
-  )
-  if (pwRows[0].password_hash !== password) {
-    throw new ApiError(401, 'Invalid email or password')
+  if (!rows.length) throw new ApiError(401, 'Incorrect email or password')
+
+  const user = rows[0]
+
+  // 2. Compare the plaintext password to the hash
+  const isMatch = await bcrypt.compare(password, user.password_hash)
+  if (!isMatch) {
+    throw new ApiError(401, 'Incorrect email or password')
   }
 
-  return rows[0]
+  // 3. Remove the hash so it doesn't get sent to the frontend/session
+  delete user.password_hash
+  return user
 }
 
 export async function signup(name, email, password) {
@@ -27,11 +30,17 @@ export async function signup(name, email, password) {
   const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email])
   if (existing.length) throw new ApiError(409, 'Email already registered')
 
+  // 1. Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  // 2. Insert the hash into the database
   await pool.query(
     `INSERT INTO users (id, name, email, password_hash, role)
      VALUES (?,?,?,?,?)`,
-    [id, name.trim(), email.toLowerCase(), password, 'user'],
+    [id, name.trim(), email.toLowerCase(), hashedPassword, 'user'],
   )
+  
   await pool.query('INSERT INTO user_settings (user_id) VALUES (?)', [id])
+  
   return { id, name, email, role: 'user' }
 }
