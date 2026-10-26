@@ -6,6 +6,7 @@ import { useAuth } from '../../features/auth/AuthContext.jsx'
 import { daysBetween, fmtDate, fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { computeTaskStatus, emojiFor, taskIcon } from '../../shared/utils/plants.js'
 import { ScheduleModal } from './ScheduleModal.jsx'
+import greencareLogo from '../../assets/logo.svg'
 
 export function DashboardPage() {
   const { state } = useGreenCare()
@@ -70,7 +71,7 @@ export function DashboardPage() {
           <div className="attention-list">
             {attentionPlants.length ? attentionPlants.map((plant) => (
               <div className="attn-row" key={plant.id}>
-                <img src={ plant.photo_url} className="attn-thumb" />
+                <img src={plant.photo_url || greencareLogo} className="attn-thumb" />
                 <div className="attn-body">
                   <div className="attn-title">{plant.name}</div>
                   <div className="attn-sub">{plant.species_name} - {plant.notes || plant.health}</div>
