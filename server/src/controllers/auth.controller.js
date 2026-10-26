@@ -34,6 +34,12 @@ export const login = asyncHandler(async (req, res) => {
 })
 
 export const signup = asyncHandler(async (req, res) => {
+  if (req.session) {
+    await new Promise((resolve, reject) => {
+      req.session.destroy((err) => (err ? reject(err) : resolve()))
+    })
+  }
+
   const { name, email, password } = req.body
   const user = await authService.signup(name, email, password)
   res.status(201).json({ data: user })
@@ -130,18 +136,18 @@ export const update = asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT id, name, email, role, photo_url, location, created_at FROM users WHERE id = ?', [req.params.id])
 
   if (req.session.user && req.session.user.id === req.params.id) {
-  req.session.user = {
-    id: rows[0].id,
-    name: rows[0].name,
-    email: rows[0].email,
-    role: rows[0].role,
-    photo_url: rows[0].photo_url,
-    location: rows[0].location,
+    req.session.user = {
+      id: rows[0].id,
+      name: rows[0].name,
+      email: rows[0].email,
+      role: rows[0].role,
+      photo_url: rows[0].photo_url,
+      location: rows[0].location,
+    }
+    await new Promise((resolve, reject) =>
+      req.session.save(err => err ? reject(err) : resolve())
+    )
   }
-  await new Promise((resolve, reject) =>
-    req.session.save(err => err ? reject(err) : resolve())
-  )
-}
 
   res.json({ data: rows[0] })
 })
@@ -163,6 +169,7 @@ export const logout = asyncHandler(async (req, res) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to logout' })
     }
+    res.clearCookie('connect.sid', { path: '/' })
     res.status(204).end()
   })
 })

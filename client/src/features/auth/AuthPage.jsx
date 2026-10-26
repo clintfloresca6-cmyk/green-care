@@ -341,7 +341,7 @@ function BrandPanel() {
           <img src={waterIcon} className="auth-brand-card-icon" />
           <div>
             <div className="auth-brand-card-label">Watering streak</div>
-            <div className="auth-brand-card-sub">12 days in a row 🔥</div>
+            <div className="auth-brand-card-sub">12 days in a row</div>
           </div>
         </div>
       </div>

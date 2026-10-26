@@ -127,8 +127,12 @@ export function AuthProvider({ children }) {
         method: 'POST',
         credentials: 'include',
       })
+    } catch (error) {
+      console.error('Logout failed:', error)
     } finally {
       setCurrentUser(null)
+      window.location.hash = '#/dashboard'
+      window.location.reload() 
     }
   }, [])
 
