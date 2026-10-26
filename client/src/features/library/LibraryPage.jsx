@@ -166,7 +166,9 @@ export function LibraryPage() {
           {/* Show More Button - Centered */}
           {hasMore && (
             <div style={{
+              display: 'flex',
               textAlign: 'center',
+              justifyContent: 'center',
               padding: '28px',
               flexShrink: 0
             }}>

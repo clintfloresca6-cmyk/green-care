@@ -9,8 +9,9 @@ export function TaskRow({ task, plant, onEdit }) {
   const badgeText = status === 'overdue' ? 'Overdue' : status === 'today' ? 'Today' : status === 'completed' ? 'Done' : (task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? fmtDateShort(task.date) : 'Invalid Date')
 
   const handleCompleteTask = async () => {
-    // First complete the current task
-    await actions.completeTask(task.id)
+    // FIX: Use updateTask instead of completeTask to avoid double-journaling,
+    // since we are handling the journal and repeat logic below.
+    await actions.updateTask(task.id, { status: 'completed' })
 
     // If task is repeating, create a new instance
     if (task.is_repeating && task.is_repeating > 0) {

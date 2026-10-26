@@ -70,7 +70,7 @@ export function DashboardPage() {
           <div className="attention-list">
             {attentionPlants.length ? attentionPlants.map((plant) => (
               <div className="attn-row" key={plant.id}>
-                <span className="attn-thumb">{emojiFor(plant.species_name)}</span>
+                <img src={ plant.photo_url} className="attn-thumb" />
                 <div className="attn-body">
                   <div className="attn-title">{plant.name}</div>
                   <div className="attn-sub">{plant.species_name} - {plant.notes || plant.health}</div>

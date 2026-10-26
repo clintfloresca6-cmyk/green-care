@@ -45,6 +45,24 @@
 
 * {
   box-sizing: border-box;
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--moss-500);
+    outline-offset: 2px;
+  }
 }
 
 [hidden] {
@@ -618,7 +636,7 @@ a,
 
 .card-head {
   display: flex;
-  position:sticky;
+  position: sticky;
   background: var(--paper);
   align-items: center;
   justify-content: space-between;
@@ -751,6 +769,12 @@ a,
   color: var(--ink-600);
 }
 
+.task-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -868,14 +892,14 @@ a,
 }
 
 .attn-thumb {
-  width: 38px;
-  height: 38px;
+  width: 3rem;
+  height: 3rem;
   border-radius: 10px;
   background: var(--sage-100);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  object-fit: cover;
 }
 
 .attn-body {
@@ -1077,14 +1101,14 @@ a,
   margin-top: 4px;
 }
 
-.plant-info{
+.plant-info {
   display: flex;
   align-items: center;
   text-align: center;
   gap: 6px;
 }
 
-.plant-icon{
+.plant-icon {
   width: 15px;
   height: 15px;
   font-size: 14px;
@@ -1145,19 +1169,19 @@ a,
   object-fit: cover;
 }
 
-.species-image{
+.species-image {
   display: flex;
   justify-content: center;
 }
 
-.species-image img{
+.species-image img {
   height: 15rem;
   width: 15rem;
   border-radius: 3%;
   object-fit: cover;
 }
 
-.species-care-info{
+.species-care-info {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1231,9 +1255,11 @@ a,
   0% {
     background-color: var(--border);
   }
+
   50% {
     background-color: var(--sage-100);
   }
+
   100% {
     background-color: var(--border);
   }
@@ -1424,7 +1450,7 @@ a,
   flex-shrink: 0;
 }
 
-.journal-icon img{
+.journal-icon img {
   width: 100%;
   height: 100%;
 }
@@ -1536,7 +1562,7 @@ a,
   font-size: 12px;
 }
 
-.cal-task-icon{
+.cal-task-icon {
   width: 20px;
   height: auto;
 }
@@ -1558,13 +1584,13 @@ a,
   font-size: 13px;
 }
 
-.t-task{
+.t-task {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.t-task-icon{
+.t-task-icon {
   width: 18px;
   height: 18px;
   border-radius: 8px;
@@ -1578,7 +1604,7 @@ a,
   font-size: 11.5px;
 }
 
-.task-table-row .task-status{
+.task-table-row .task-status {
   display: flex;
   gap: 15px;
 }
@@ -1904,6 +1930,12 @@ a,
 .form-row textarea:focus {
   border-color: var(--moss-500);
   background: var(--paper);
+}
+
+.form-row textarea {
+  resize: none;
+  overflow-y: hidden;
+  min-height: 60px; 
 }
 
 .form-error {
@@ -2314,7 +2346,8 @@ a,
 @media (max-width: 560px) {
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px; /* Tighter gap for mobile */
+    gap: 12px;
+    /* Tighter gap for mobile */
     margin-bottom: 16px;
   }
 
@@ -2389,7 +2422,7 @@ a,
   }
 
   /* Plant Name */
-  .task-table-row > div:nth-child(1) {
+  .task-table-row>div:nth-child(1) {
     grid-area: plant;
     font-family: var(--font-display);
     font-size: 16px;
@@ -2400,7 +2433,7 @@ a,
   }
 
   /* Task Type */
-  .task-table-row > div:nth-child(2) {
+  .task-table-row>div:nth-child(2) {
     grid-area: task;
     font-size: 14px;
     font-weight: 500;
@@ -2408,7 +2441,7 @@ a,
   }
 
   /* Date */
-  .task-table-row > div:nth-child(3) {
+  .task-table-row>div:nth-child(3) {
     grid-area: date;
     text-align: right;
     font-size: 13px;
@@ -2416,7 +2449,7 @@ a,
   }
 
   /* Priority */
-  .task-table-row > div:nth-child(4) {
+  .task-table-row>div:nth-child(4) {
     grid-area: priority;
     font-size: 13px;
     color: var(--ink-600);
@@ -2453,26 +2486,29 @@ a,
   }
 
   .library-grid {
-    grid-template-columns: repeat(2, 1fr); /* Force 2 columns on mobile */
+    grid-template-columns: repeat(2, 1fr);
+    /* Force 2 columns on mobile */
     gap: 12px;
   }
 
   .species-card {
-    padding: 10px 8px; /* Tighter padding for mobile cards */
+    padding: 10px 8px;
+    /* Tighter padding for mobile cards */
   }
 
   .species-icon {
     width: 100%;
     height: auto;
-    aspect-ratio: 1; /* Keep the image square */
+    aspect-ratio: 1;
+    /* Keep the image square */
     border-radius: 8px;
     margin-bottom: 8px;
     object-fit: cover;
   }
-  
+
   /* Handle the fallback logo icon size */
   .species-icon img {
-    height: 40px !important; 
+    height: 40px !important;
   }
 
   .species-name {
@@ -2487,11 +2523,12 @@ a,
     text-align: center;
     margin-bottom: 4px;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Truncate long scientific names */
+    -webkit-line-clamp: 2;
+    /* Truncate long scientific names */
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  
+
   /* Adjust the container padding on mobile so cards fit */
   .library-container {
     padding: 0 16px !important;
@@ -2506,7 +2543,8 @@ a,
   .plant-thumb {
     height: 100px;
     margin-top: 5px;
-    border-radius: 8px 8px 0 0; /* Square off the bottom */
+    border-radius: 8px 8px 0 0;
+    /* Square off the bottom */
   }
 
   .plant-thumb img {
@@ -2515,7 +2553,8 @@ a,
 
   .plant-card-body {
     padding: 10px;
-    gap: 4px; /* Tighter spacing */
+    gap: 4px;
+    /* Tighter spacing */
   }
 
   /* Stack the name and badge so they don't overlap */
@@ -2530,7 +2569,8 @@ a,
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Cuts off long names with "..." */
+    text-overflow: ellipsis;
+    /* Cuts off long names with "..." */
   }
 
   .badge {
@@ -2565,7 +2605,8 @@ a,
   .plant-icon {
     width: 12px;
     height: 12px;
-    flex-shrink: 0; /* Prevents icon from squishing */
+    flex-shrink: 0;
+    /* Prevents icon from squishing */
   }
 
   /* Make the button span full width */
@@ -2594,8 +2635,8 @@ a,
   }
 
   /* Override the inline 70x70 styles on the image wrapper */
-  .health-card > div:first-child {
-    width: 100% !important; 
+  .health-card>div:first-child {
+    width: 100% !important;
     height: 100px !important;
     border-radius: 8px !important;
     margin-bottom: 6px;
@@ -2607,7 +2648,7 @@ a,
   }
 
   /* Make the image fill the new full-width wrapper */
-  .health-card > div:first-child img {
+  .health-card>div:first-child img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2615,7 +2656,7 @@ a,
   }
 
   /* Text scaling and truncation */
-  .health-card > div:nth-child(2) {
+  .health-card>div:nth-child(2) {
     font-size: 14px;
     width: 100%;
     white-space: nowrap;
@@ -2631,7 +2672,7 @@ a,
     text-overflow: ellipsis;
   }
 
-  .health-card > div:nth-child(4) {
+  .health-card>div:nth-child(4) {
     font-size: 12px;
     margin-top: 2px;
   }
@@ -2641,7 +2682,8 @@ a,
     width: 100%;
     padding: 8px 0;
     font-size: 11px;
-    margin-top: auto; /* Push to bottom */
+    margin-top: auto;
+    /* Push to bottom */
     border-radius: var(--radius-sm);
   }
 
@@ -2655,20 +2697,26 @@ a,
 }
 
 @media (max-width: 480px) {
+
   /* --- Modal Full Screen Mobile Layout --- */
   .modal-backdrop {
-    padding: 16px; /* The little bit of padding you want */
-    align-items: center; /* Center it vertically */
+    padding: 16px;
+    /* The little bit of padding you want */
+    align-items: center;
+    /* Center it vertically */
   }
 
   .modal {
     width: 100%;
     max-width: 100%;
-    max-height: 92vh; /* Allow scrolling if the form is long */
-    border-bottom-left-radius: 0; /* Bottom sheet style */
+    max-height: 92vh;
+    /* Allow scrolling if the form is long */
+    border-bottom-left-radius: 0;
+    /* Bottom sheet style */
     border-bottom-right-radius: 0;
     margin: 0;
-    border-radius: var(--radius-lg); /* Keep the nice rounded corners */
+    border-radius: var(--radius-lg);
+    /* Keep the nice rounded corners */
     display: flex;
     flex-direction: column;
     border-radius: 16px;
@@ -2686,7 +2734,8 @@ a,
     flex-direction: column-reverse;
     gap: 10px;
     padding-top: 16px;
-    margin-top: auto; /* Push to the bottom if there's extra space */
+    margin-top: auto;
+    /* Push to the bottom if there's extra space */
   }
 
   .modal-actions .btn {
@@ -2738,7 +2787,8 @@ a,
 
   /* --- 2. Modal Mobile Layout (ScheduleModal) --- */
   .modal-backdrop {
-    padding: 10px; /* Reduce padding so modal fits */
+    padding: 10px;
+    /* Reduce padding so modal fits */
   }
 
   .modal-head {
@@ -2748,12 +2798,13 @@ a,
   .modal-body {
     padding: 16px;
   }
-  
+
   .modal-actions {
-    flex-direction: column-reverse; /* Stack action buttons, primary on top */
+    flex-direction: column-reverse;
+    /* Stack action buttons, primary on top */
     gap: 10px;
   }
-  
+
   .modal-actions .btn {
     width: 100%;
   }
@@ -2763,16 +2814,20 @@ a,
   .modal-head {
     padding: 12px 16px;
   }
+
   .modal-head h3 {
     font-size: 16px;
   }
+
   .modal-body {
     padding: 16px;
   }
+
   .modal-actions {
     gap: 8px;
     margin-top: 4px;
   }
+
   .modal-actions .btn {
     padding: 8px 16px;
     font-size: 12.5px;
@@ -2940,8 +2995,17 @@ a,
 }
 
 @keyframes adminPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.8); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
 }
 
 /* ── Alert banner for open reports ──────────────────────── */

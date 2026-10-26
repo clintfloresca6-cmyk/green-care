@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 
+// Define the exact values used in the HTML options
+const LIGHT_OPTIONS = ["Bright Indirect", "Low light", "Full Sun", "Partial shade", "Medium light"];
+const WATERING_OPTIONS = ["Every 3 days", "Weekly", "Every 10 days", "Every 2 weeks"];
+const FERTILIZING_OPTIONS = ["Monthly", "Every 2 Weeks", "Every 6 Weeks", "Seasonal"];
+
 export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaultSpeciesId = null, defaultPhoto = null, defaultLight = '', defaultWatering = '', defaultFertilizing = '' }) {
   const [photo, setPhoto] = useState(defaultPhoto);
   const [photoFile, setPhotoFile] = useState(null);
@@ -7,12 +12,55 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
   const [processing, setProcessing] = useState(false);
   const [species, setSpecies] = useState(defaultSpecies || '');
   const [speciesId, setSpeciesId] = useState(defaultSpeciesId ?? null);
-  const [light, setLight] = useState(defaultLight || '');
-  const [watering, setWatering] = useState(defaultWatering || '');
-  const [fertilizing, setFertilizing] = useState(defaultFertilizing || '');
-  const [originalLight, setOriginalLight] = useState(defaultLight || '');
-  const [originalWatering, setOriginalWatering] = useState(defaultWatering || '');
-  const [originalFertilizing, setOriginalFertilizing] = useState(defaultFertilizing || '');
+  
+  // State for form inputs
+  const [light, setLight] = useState('');
+  const [watering, setWatering] = useState('');
+  const [fertilizing, setFertilizing] = useState('');
+  
+  // State to hold the recommended (original) values
+  const [originalLight, setOriginalLight] = useState('');
+  const [originalWatering, setOriginalWatering] = useState('');
+  const [originalFertilizing, setOriginalFertilizing] = useState('');
+
+  // Helper: Forces the Trefle string to match our exact HTML option casing.
+  // If no match or '—', returns empty string so the placeholder shows correctly.
+  const normalizeValue = (val, options) => {
+    if (!val || val === '—') return '';
+    const match = options.find(o => o.toLowerCase() === val.toLowerCase());
+    return match || ''; 
+  };
+
+  // Helper to handle case-insensitive comparisons for the "(Recommended)" label
+  const isRecommended = (currentVal, originalVal) => {
+    if (!currentVal || !originalVal) return false;
+    return currentVal.toLowerCase() === originalVal.toLowerCase();
+  };
+
+  // Auto-resize textarea
+  const handleAutoResize = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
+  // Set initial values and original values
+  useEffect(() => {
+    const normLight = normalizeValue(defaultLight, LIGHT_OPTIONS);
+    const normWatering = normalizeValue(defaultWatering, WATERING_OPTIONS);
+    const normFertilizing = normalizeValue(defaultFertilizing, FERTILIZING_OPTIONS);
+
+    setLight(normLight);
+    setOriginalLight(normLight);
+
+    setWatering(normWatering);
+    setOriginalWatering(normWatering);
+
+    setFertilizing(normFertilizing);
+    setOriginalFertilizing(normFertilizing);
+
+    if (defaultSpecies) setSpecies(defaultSpecies);
+    if (defaultSpeciesId !== null) setSpeciesId(defaultSpeciesId);
+  }, [defaultLight, defaultWatering, defaultFertilizing, defaultSpecies, defaultSpeciesId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +68,6 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
       setProcessing(true);
       setError('');
       try {
-        // Get form values manually to properly handle file input
         const form = e.currentTarget;
         const name = form.elements.name.value.trim();
         const species = form.elements.species.value.trim();
@@ -30,24 +77,20 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
         const fertilizing = form.elements.fertilizing.value || null;
         const notes = form.elements.notes.value.trim() || null;
 
-        // Validate required fields
         if (!name || !species) {
           setError('Please give your plant a name and a species before saving.');
           setProcessing(false);
           return;
         }
 
-        // Prepare data for submission
-        let photoUrl = photo || null; // Default to the preview URL or null
+        let photoUrl = photo || null;
 
-        // If we have a selected file, convert it to base64 for upload
         if (photoFile) {
           try {
             const base64Image = await fileToBase64(photoFile);
-            photoUrl = base64Image; // Send base64 to backend for ImgBB upload
+            photoUrl = base64Image;
           } catch (error) {
             console.error('Error converting image to base64:', error);
-            // Fall back to using the preview URL if base64 conversion fails
             photoUrl = photo || null;
           }
         }
@@ -61,15 +104,13 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
           watering,
           fertilizing,
           notes,
-          photo: photoUrl, // Include photo (either base64 for upload or preview URL)
+          photo: photoUrl,
         };
 
-        // Call the onAddPlant callback with the plant data
         if (onAddPlant) {
           await onAddPlant(plantData);
         }
 
-        // Reset form on success
         setError('');
         setPhoto(null);
         setPhotoFile(null);
@@ -90,75 +131,17 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
     }
   };
 
-  // Convert File to base64 string
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        // Remove the data URL prefix (e.g., 'data:image/jpeg;base64,')
         const base64 = reader.result.split(',')[1];
         resolve(base64);
       };
       reader.onerror = (error) => reject(error);
     });
   };
-
-  // Set species from prop when it changes (but only if not already set by user)
-  useEffect(() => {
-    if (defaultSpecies && !species) {
-      setSpecies(defaultSpecies);
-    }
-  }, [defaultSpecies, species]);
-
-  // Set speciesId from prop when it changes (but only if not already set by user)
-  useEffect(() => {
-    if (defaultSpeciesId !== null && speciesId === null) {
-      setSpeciesId(defaultSpeciesId);
-    }
-  }, [defaultSpeciesId, speciesId]);
-
-  // Set light from prop when it changes (but only if not already set by user)
-  useEffect(() => {
-    if (defaultLight && !light) {
-      setLight(defaultLight);
-    }
-  }, [defaultLight, light]);
-
-  // Set watering from prop when it changes (but only if not already set by user)
-  useEffect(() => {
-    if (defaultWatering && !watering) {
-      setWatering(defaultWatering);
-    }
-  }, [defaultWatering, watering]);
-
-  // Set fertilizing from prop when it changes (but only if not already set by user)
-  useEffect(() => {
-    if (defaultFertilizing && !fertilizing) {
-      setFertilizing(defaultFertilizing);
-    }
-  }, [defaultFertilizing, fertilizing]);
-
-  // Set original light from prop (the recommended value from data)
-  useEffect(() => {
-    if (defaultLight) {
-      setOriginalLight(defaultLight);
-    }
-  }, [defaultLight]);
-
-  // Set original watering from prop (the recommended value from data)
-  useEffect(() => {
-    if (defaultWatering) {
-      setOriginalWatering(defaultWatering);
-    }
-  }, [defaultWatering]);
-
-  // Set original fertilizing from prop (the recommended value from data)
-  useEffect(() => {
-    if (defaultFertilizing) {
-      setOriginalFertilizing(defaultFertilizing);
-    }
-  }, [defaultFertilizing]);
 
   return (
     <div className="modal" style={{ display: 'flex', flexDirection: 'column', margin: 'auto', overflow: 'auto', maxHeight: '90vh', scrollbarWidth: 'none' }}>
@@ -171,13 +154,7 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
           <div className="form-grid">
             <div className="form-row">
               <label>Plant Name *</label>
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="e.g. Luna"
-                disabled={processing}
-              />
+              <input type="text" name="name" required placeholder="e.g. Luna" disabled={processing} />
             </div>
             <div className="form-row">
               <label>Species *</label>
@@ -194,86 +171,62 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
             </div>
             <div className="form-row">
               <label>Location</label>
-              <input
-                type="text"
-                name="location"
-                placeholder="e.g. Living Room Window"
-                disabled={processing}
-                required
-              />
+              <input type="text" name="location" placeholder="e.g. Living Room Window" disabled={processing} required />
             </div>
             <div className="form-row">
               <label>Light Condition</label>
-              <select
-                name="light"
-                value={light}
-                onChange={(e) => setLight(e.target.value)}
-                disabled={processing}
-                required
-              >
+              <select name="light" value={light} onChange={(e) => setLight(e.target.value)} disabled={processing} required>
                 <option value="">-- Select Light Condition --</option>
                 <option value="Bright Indirect">
-                  Bright Indirect{originalLight !== '—' && light === originalLight && originalLight === 'Bright Indirect' ? ' (Recommended)' : ''}
+                  Bright Indirect{isRecommended('Bright Indirect', originalLight) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Low light">
-                  Low light{originalLight !== '—' && light === originalLight && originalLight === 'Low light' ? ' (Recommended)' : ''}
+                  Low light{isRecommended('Low light', originalLight) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Full Sun">
-                  Full Sun{originalLight !== '—' && light === originalLight && originalLight === 'Full Sun' ? ' (Recommended)' : ''}
+                  Full Sun{isRecommended('Full Sun', originalLight) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Partial shade">
-                  Partial shade{originalLight !== '—' && light === originalLight && originalLight === 'Partial shade' ? ' (Recommended)' : ''}
+                  Partial shade{isRecommended('Partial shade', originalLight) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Medium light">
-                  Medium light{originalLight !== '—' && light === originalLight && originalLight === 'Medium light' ? ' (Recommended)' : ''}
+                  Medium light{isRecommended('Medium light', originalLight) ? ' (Recommended)' : ''}
                 </option>
               </select>
             </div>
             <div className="form-row">
               <label>Watering Frequency</label>
-              <select
-                name="watering"
-                value={watering}
-                onChange={(e) => setWatering(e.target.value)}
-                disabled={processing}
-                required
-              >
+              <select name="watering" value={watering} onChange={(e) => setWatering(e.target.value)} disabled={processing} required>
                 <option value="">-- Select Watering Frequency --</option>
                 <option value="Every 3 days">
-                  Every 3 days{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 3 days' ? ' (Recommended)' : ''}
+                  Every 3 days{isRecommended('Every 3 days', originalWatering) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Weekly">
-                  Weekly{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Weekly' ? ' (Recommended)' : ''}
+                  Weekly{isRecommended('Weekly', originalWatering) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Every 10 days">
-                  Every 10 days{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 10 days' ? ' (Recommended)' : ''}
+                  Every 10 days{isRecommended('Every 10 days', originalWatering) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Every 2 weeks">
-                  Every 2 weeks{originalWatering !== '—' && watering === originalWatering && originalWatering === 'Every 2 weeks' ? ' (Recommended)' : ''}
+                  Every 2 weeks{isRecommended('Every 2 weeks', originalWatering) ? ' (Recommended)' : ''}
                 </option>
               </select>
             </div>
             <div className="form-row">
               <label>Fertilizing Frequency</label>
-              <select
-                name="fertilizing"
-                value={fertilizing}
-                onChange={(e) => setFertilizing(e.target.value)}
-                disabled={processing}
-                required
-              >
+              <select name="fertilizing" value={fertilizing} onChange={(e) => setFertilizing(e.target.value)} disabled={processing} required>
                 <option value="">-- Select Fertilizing Frequency --</option>
                 <option value="Monthly">
-                  Monthly{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Monthly' ? ' (Recommended)' : ''}
+                  Monthly{isRecommended('Monthly', originalFertilizing) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Every 2 Weeks">
-                  Every 2 Weeks{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Every 2 Weeks' ? ' (Recommended)' : ''}
+                  Every 2 Weeks{isRecommended('Every 2 Weeks', originalFertilizing) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Every 6 Weeks">
-                  Every 6 Weeks{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Every 6 Weeks' ? ' (Recommended)' : ''}
+                  Every 6 Weeks{isRecommended('Every 6 Weeks', originalFertilizing) ? ' (Recommended)' : ''}
                 </option>
                 <option value="Seasonal">
-                  Seasonal{originalFertilizing !== '—' && fertilizing === originalFertilizing && originalFertilizing === 'Seasonal' ? ' (Recommended)' : ''}
+                  Seasonal{isRecommended('Seasonal', originalFertilizing) ? ' (Recommended)' : ''}
                 </option>
               </select>
             </div>
@@ -285,16 +238,13 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
               rows="2"
               placeholder="Anything worth remembering about this plant"
               disabled={processing}
+              onInput={handleAutoResize}
+              style={{ resize: 'none', overflowY: 'hidden', minHeight: '60px' }}
             />
           </div>
           <div className="form-row">
             <label>Plant Photo</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              disabled={processing}
-            />
+            <input type="file" accept="image/*" onChange={handlePhotoChange} disabled={processing} />
             {photo && (
               <div className="photo-preview">
                 <img src={photo} alt="Preview" style={{ maxWidth: '100%', height: '100%' }} />
@@ -303,19 +253,10 @@ export function AddPlantModal({ onClose, onAddPlant, defaultSpecies = '', defaul
           </div>
           {error && <p className="form-error">{error}</p>}
           <div className="modal-actions">
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={onClose}
-              disabled={processing}
-            >
+            <button className="btn btn-secondary" type="button" onClick={onClose} disabled={processing}>
               Cancel
             </button>
-            <button
-              className="btn btn-primary"
-              type="submit"
-              disabled={processing}
-            >
+            <button className="btn btn-primary" type="submit" disabled={processing}>
               {processing ? 'Adding...' : 'Add Plant'}
             </button>
           </div>
