@@ -3,6 +3,7 @@ import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { emojiFor, statusDotClass } from '../../shared/utils/plants.js'
 import { Modal } from './HealthModal.jsx'
 import { DiagnosisModal } from './DiagnosisModal.jsx'
+import cameraIcon from '../../assets/camera.svg'
 
 export function HealthPage() {
   const { state } = useGreenCare()
@@ -22,7 +23,7 @@ export function HealthPage() {
         </div>
         <button className="btn btn-primary" type="button" onClick={() => {
           setShowDiagnosisModal(true)
-        }}>📷 Diagnose a Plant</button>
+        }}><img src={cameraIcon} /> Diagnose a Plant</button>
       </div>
 
       {state.plants.length === 0 ? (

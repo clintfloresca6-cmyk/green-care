@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useGreenCare } from '../../shared/context/GreenCareContext.jsx'
 import { todayISO } from '../../shared/utils/date.js'
 
-// If is_repeating is stored in days, pick the largest unit that divides evenly
-// so a 14-day interval shows as "Every 2 weeks" rather than "Every 14 days".
 function inferRepeat(days) {
   if (!days || days <= 0) return { interval: '', unit: 'days' }
   if (days % 30 === 0) return { interval: days / 30, unit: 'months' }
@@ -27,7 +25,6 @@ export function ScheduleModal({ task, onClose }) {
     try {
       const formData = Object.fromEntries(new FormData(event.currentTarget))
 
-      // Convert "N days/weeks/months" into a day count for storage.
       const intervalNum = parseInt(formData.repeatInterval, 10)
       let repeatDays = 0
       if (!isNaN(intervalNum) && intervalNum > 0) {
@@ -87,6 +84,7 @@ export function ScheduleModal({ task, onClose }) {
                 required
                 defaultValue={task?.plantId || state.plants[0]?.id}
                 disabled={submitting}
+                style={{ width: '100%' }}
               >
                 {state.plants.map((plant) => (
                   <option value={plant.id} key={plant.id}>
@@ -103,6 +101,7 @@ export function ScheduleModal({ task, onClose }) {
                 required
                 defaultValue={task?.type || 'Water'}
                 disabled={submitting}
+                style={{ width: '100%' }}
               >
                 <option value="Water">Water</option>
                 <option value="Fertilize">Fertilize</option>
@@ -122,6 +121,7 @@ export function ScheduleModal({ task, onClose }) {
                 required
                 defaultValue={task?.date || todayISO()}
                 disabled={submitting}
+                style={{ width: '100%' }}
               />
             </div>
 
@@ -134,6 +134,7 @@ export function ScheduleModal({ task, onClose }) {
                   task?.time && task.time !== 'Anytime' ? task.time : ''
                 }
                 disabled={submitting}
+                style={{ width: '100%' }}
               />
             </div>
 
@@ -143,6 +144,7 @@ export function ScheduleModal({ task, onClose }) {
                 name="priority"
                 defaultValue={task?.priority || 'medium'}
                 disabled={submitting}
+                style={{ width: '100%' }}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -156,6 +158,7 @@ export function ScheduleModal({ task, onClose }) {
                 name="status"
                 defaultValue={task?.status || 'pending'}
                 disabled={submitting}
+                style={{ width: '100%' }}
               >
                 <option value="pending">Pending</option>
                 <option value="completed">Completed</option>
@@ -174,13 +177,13 @@ export function ScheduleModal({ task, onClose }) {
                 min="0"
                 placeholder="Every (0 to disable)"
                 defaultValue={initialRepeat.interval}
-                style={{ width: '80px' }}
+                style={{ width: '80px', minWidth: '80px' }}
                 disabled={submitting}
               />
               <select
                 name="repeatUnit"
                 defaultValue={initialRepeat.unit}
-                style={{ width: '100px' }}
+                style={{ width: '100%' }}
                 disabled={submitting}
               >
                 <option value="days">Days</option>

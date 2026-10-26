@@ -70,21 +70,23 @@ export function TaskRow({ task, plant, onEdit }) {
 
   return (
     <div className={status === 'completed' ? 'task-row done' : 'task-row'}>
-      <span className="t-icon"><img src={taskIcon(task.type)} /></span>
+      <span className="t-icon"><img src={taskIcon(task.type)} alt="" /></span>
       <div className="t-body">
         <div className="t-title">{task.type} {plant?.name || ''}</div>
         <div className="t-sub">{plant?.species_name || plant?.common_name} · {task.time}</div>
       </div>
       <span className={`badge ${badgeClass}`}>{badgeText}</span>
+      
+      {/* Wrap the buttons in a div with class "task-actions" */}
       {status !== 'completed' ? (
-        <>
-          <button className="btn btn-primary btn-sm me-2" type="button" onClick={() => actions.completeTask(task)}>
+        <div className="task-actions">
+          <button className="btn btn-primary btn-sm" type="button" onClick={handleCompleteTask}>
             Complete
           </button>
           <button className="btn btn-secondary btn-sm" type="button" onClick={() => onEdit && onEdit(task)}>
             Edit
           </button>
-        </>
+        </div>
       ) : null}
     </div>
   )

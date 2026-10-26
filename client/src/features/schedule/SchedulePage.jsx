@@ -132,39 +132,54 @@ export function SchedulePage() {
             {taskFilters.map((item) => <button className={filter === item ? 'pill active' : 'pill'} type="button" key={item} onClick={() => setFilter(item)}>{label(item)}</button>)}
           </div>
         </div>
+        
         <div className="task-table">
           <div className="task-table-row head"><div>Plant</div><div>Task</div><div>Date</div><div>Priority</div><div>Status</div><div></div></div>
-          {filteredTasks.map((task) => {
-            const status = computeTaskStatus(task)
-            const badgeClass = status === 'overdue' ? 'badge-overdue' : status === 'today' ? 'badge-today' : status === 'completed' ? 'badge-done' : 'badge-upcoming'
+          
+          {/* CONDITIONAL RENDER HERE */}
+          {filteredTasks.length === 0 ? (
+            <div className="empty-state" style={{ padding: '40px 20px', background: 'var(--sage-50)', borderRadius: 'var(--radius-md)' }}>
+              <h3>No tasks found</h3>
+              <p className="muted">
+                {filter === 'all' 
+                  ? 'You have no tasks available.' 
+                  : `No tasks for ${label(filter).toLowerCase()}.`}
+              </p>
+            </div>
+          ) : (
+            filteredTasks.map((task) => {
+              const status = computeTaskStatus(task)
+              const badgeClass = status === 'overdue' ? 'badge-overdue' : status === 'today' ? 'badge-today' : status === 'completed' ? 'badge-done' : 'badge-upcoming'
 
-            // Repeat chip logic
-            const repeatChip = () => {
-              if (Number.isFinite(task.repeat_interval) && task.repeat_interval > 0 && task.repeat_unit) {
-                const unitLabel = task.repeat_interval === 1 ?
-                  task.repeat_unit.slice(0, -1) : // singular (remove 's')
-                  task.repeat_unit; // plural
-                return `↻ every ${task.repeat_interval} ${unitLabel}`;
-              }
-              return null;
-            };
+              // Repeat chip logic
+              const repeatChip = () => {
+                if (Number.isFinite(task.repeat_interval) && task.repeat_interval > 0 && task.repeat_unit) {
+                  const unitLabel = task.repeat_interval === 1 ?
+                    task.repeat_unit.slice(0, -1) : // singular (remove 's')
+                    task.repeat_unit; // plural
+                  return `↻ every ${task.repeat_interval} ${unitLabel}`;
+                }
+                return null;
+              };
 
-            return (
-              <div className="task-table-row" key={task.id}>
-                <div>{plantById(state, task.plantId)?.name || ''}</div>
-                <div className="t-task">{<img src={taskIcon(task.type)} alt="" className="t-task-icon" />} {task.type}</div>
-                <div>{task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? fmtDateShort(task.date) : 'Invalid Date'}</div>
-                <div><span className={`priority-dot priority-${task.priority}`}></span>{task.priority}</div>
-                <div className='task-status'>
-                  <span className={`badge ${badgeClass}`}>{label(status)}</span>
-                  {status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task)}>Complete</button> : null}
-                  {repeatChip() && <span className="repeat-chip"> {repeatChip()}</span>}
+              return (
+                <div className="task-table-row" key={task.id}>
+                  <div>{plantById(state, task.plantId)?.name || ''}</div>
+                  <div className="t-task">{<img src={taskIcon(task.type)} alt="" className="t-task-icon" />} {task.type}</div>
+                  <div>{task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? fmtDateShort(task.date) : 'Invalid Date'}</div>
+                  <div><span className={`priority-dot priority-${task.priority}`}></span>{task.priority}</div>
+                  <div className='task-status'>
+                    <span className={`badge ${badgeClass}`}>{label(status)}</span>
+                    {status !== 'completed' ? <button className="btn btn-secondary btn-sm" type="button" onClick={() => actions.completeTask(task)}>Complete</button> : null}
+                    {repeatChip() && <span className="repeat-chip"> {repeatChip()}</span>}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       </div>
+      
       {/* Direct modal rendering - only show if button was clicked */}
       {modalOpen && (
         <Modal

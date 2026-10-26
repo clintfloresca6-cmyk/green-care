@@ -305,7 +305,7 @@
   left: 13px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 15px;
+  width: 16px;
   pointer-events: none;
   opacity: 0.5;
 }

@@ -5,6 +5,7 @@ import { fmtDateShort, todayISO } from '../../shared/utils/date.js'
 import { emojiFor, healthClass, taskIcon } from '../../shared/utils/plants.js'
 import { Modal } from '../../features/library/LibraryModal.jsx'
 import locationIcon from '../../assets/location.svg'
+import searchIcon from '../../assets/magnify.svg'
 
 const filters = [
   ['all', 'All'],
@@ -68,7 +69,7 @@ export function PlantsPage() {
           ))}
         </div>
         <div className="search-box">
-          <span data-icon="search"></span>
+          <img src={searchIcon} data-icon="search" />
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your plants..." />
         </div>
       </div>

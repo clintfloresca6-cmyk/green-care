@@ -801,10 +801,13 @@ a,
 }
 
 .btn {
+  display: flex;
+  gap: 5px;
   border-radius: 99px;
   padding: 9px 18px;
   font-weight: 600;
   font-size: 13.5px;
+  align-items: center;
   border: 1px solid transparent;
   transition: transform .1s ease, background .15s ease;
 }
@@ -816,6 +819,7 @@ a,
 .btn-primary {
   background: var(--forest-800);
   color: #fff;
+  justify-content: center;
 }
 
 .btn-primary:hover {
@@ -826,6 +830,7 @@ a,
   background: var(--sage-100);
   color: var(--ink-900);
   border-color: var(--border);
+  justify-content: center;
 }
 
 .btn-secondary:hover {
@@ -938,8 +943,6 @@ a,
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
@@ -975,6 +978,7 @@ a,
   border-radius: 99px;
   padding: 8px 15px;
   min-width: 220px;
+  margin-top: 5px;
 }
 
 .search-box span {
@@ -1886,6 +1890,7 @@ a,
 .form-row input,
 .form-row select,
 .form-row textarea {
+  width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -2308,7 +2313,25 @@ a,
 
 @media (max-width: 560px) {
   .stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px; /* Tighter gap for mobile */
+    margin-bottom: 16px;
+  }
+
+  /* Shrink the cards so they fit nicely */
+  .stat-card {
+    padding: 14px;
+    gap: 6px;
+  }
+
+  /* Scale down the numbers and labels */
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 11.5px;
+    line-height: 1.3;
   }
 
   .page-head {
@@ -2316,21 +2339,422 @@ a,
     align-items: flex-start;
   }
 
-  .task-table-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+  /* --- 1. Fix the Upcoming Tasks Header & Filter Pills --- */
+  .card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 
+  .filter-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-pills .pill {
+    width: 100%;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 14px;
+    border-radius: 99px;
+  }
+
+  /* --- 2. Transform Task Rows into Mobile Cards --- */
+  .task-table {
+    gap: 12px;
+  }
+
+  .task-table-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "plant plant"
+      "task date"
+      "priority priority"
+      "status status";
+    gap: 8px 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--paper);
+    box-shadow: var(--shadow-sm);
+    align-items: center;
+  }
+
+  /* Hide the table header row */
   .task-table-row.head {
     display: none;
   }
 
+  /* Plant Name */
+  .task-table-row > div:nth-child(1) {
+    grid-area: plant;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+
+  /* Task Type */
+  .task-table-row > div:nth-child(2) {
+    grid-area: task;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-600);
+  }
+
+  /* Date */
+  .task-table-row > div:nth-child(3) {
+    grid-area: date;
+    text-align: right;
+    font-size: 13px;
+    color: var(--ink-400);
+  }
+
+  /* Priority */
+  .task-table-row > div:nth-child(4) {
+    grid-area: priority;
+    font-size: 13px;
+    color: var(--ink-600);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Status & Complete Button Container */
+  .task-table-row .task-status {
+    grid-area: status;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .task-table-row .task-status .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Notification panel width adjustment */
   .notif-panel {
     width: 280px;
     right: -60px;
   }
 
   .modal {
+    width: 100%;
+  }
+
+  .library-grid {
+    grid-template-columns: repeat(2, 1fr); /* Force 2 columns on mobile */
+    gap: 12px;
+  }
+
+  .species-card {
+    padding: 10px 8px; /* Tighter padding for mobile cards */
+  }
+
+  .species-icon {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1; /* Keep the image square */
+    border-radius: 8px;
+    margin-bottom: 8px;
+    object-fit: cover;
+  }
+  
+  /* Handle the fallback logo icon size */
+  .species-icon img {
+    height: 40px !important; 
+  }
+
+  .species-name {
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.3;
+    margin-bottom: 2px;
+  }
+
+  .species-sci {
+    font-size: 11px;
+    text-align: center;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Truncate long scientific names */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Adjust the container padding on mobile so cards fit */
+  .library-container {
+    padding: 0 16px !important;
+  }
+
+  .plant-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* --- Shrink the Card --- */
+  .plant-thumb {
+    height: 100px;
+    margin-top: 5px;
+    border-radius: 8px 8px 0 0; /* Square off the bottom */
+  }
+
+  .plant-thumb img {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .plant-card-body {
+    padding: 10px;
+    gap: 4px; /* Tighter spacing */
+  }
+
+  /* Stack the name and badge so they don't overlap */
+  .plant-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .plant-name {
+    font-size: 14px;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Cuts off long names with "..." */
+  }
+
+  .badge {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+
+  .plant-species {
+    font-size: 11px;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Left-align the metadata and truncate long locations */
+  .plant-meta {
+    font-size: 11px;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .plant-info {
+    text-align: left;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .plant-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0; /* Prevents icon from squishing */
+  }
+
+  /* Make the button span full width */
+  .plant-card-actions {
+    margin-top: 8px;
+  }
+
+  .plant-card-actions .btn {
+    width: 100%;
+    padding: 6px 0;
+    font-size: 11px;
+    display: block;
+    text-align: center;
+  }
+
+  .health-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* --- 2. Shrink and Restyle the Health Card --- */
+  .health-card {
+    padding: 12px;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  /* Override the inline 70x70 styles on the image wrapper */
+  .health-card > div:first-child {
+    width: 100% !important; 
+    height: 100px !important;
+    border-radius: 8px !important;
+    margin-bottom: 6px;
+    background: var(--sage-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Make the image fill the new full-width wrapper */
+  .health-card > div:first-child img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0 !important;
+  }
+
+  /* Text scaling and truncation */
+  .health-card > div:nth-child(2) {
+    font-size: 14px;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .health-card .muted {
+    font-size: 11px !important;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .health-card > div:nth-child(4) {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* Make the Update Health button span full width */
+  .health-card button {
+    width: 100%;
+    padding: 8px 0;
+    font-size: 11px;
+    margin-top: auto; /* Push to bottom */
+    border-radius: var(--radius-sm);
+  }
+
+  /* --- 3. Fix the Diagnose Button Icon Spacing --- */
+  .page-head .btn img {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+}
+
+@media (max-width: 480px) {
+  /* --- Modal Full Screen Mobile Layout --- */
+  .modal-backdrop {
+    padding: 16px; /* The little bit of padding you want */
+    align-items: center; /* Center it vertically */
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh; /* Allow scrolling if the form is long */
+    border-bottom-left-radius: 0; /* Bottom sheet style */
+    border-bottom-right-radius: 0;
+    margin: 0;
+    border-radius: var(--radius-lg); /* Keep the nice rounded corners */
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+  }
+
+  /* Make the modal body scrollable if the form gets too long */
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Keep the actions stacked and full width at the bottom */
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+    padding-top: 16px;
+    margin-top: auto; /* Push to the bottom if there's extra space */
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+
+  /* --- Task Row Mobile Layout (Dashboard) --- */
+  .task-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "icon body badge"
+      "actions actions actions";
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .task-row .t-icon {
+    grid-area: icon;
+    width: 40px;
+    height: 40px;
+  }
+
+  .task-row .t-body {
+    grid-area: body;
+  }
+
+  .task-row .badge {
+    grid-area: badge;
+    align-self: flex-start;
+  }
+
+  /* Make buttons stack on their own row and stretch */
+  .task-row .task-actions {
+    grid-area: actions;
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .task-row .task-actions .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* --- 2. Modal Mobile Layout (ScheduleModal) --- */
+  .modal-backdrop {
+    padding: 10px; /* Reduce padding so modal fits */
+  }
+
+  .modal-head {
+    padding: 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-actions {
+    flex-direction: column-reverse; /* Stack action buttons, primary on top */
+    gap: 10px;
+  }
+  
+  .modal-actions .btn {
     width: 100%;
   }
 }

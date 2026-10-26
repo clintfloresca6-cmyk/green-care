@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import './auth.css'
 import { useAuth } from './AuthContext.jsx'
+import emailIcon from '../../assets/email.svg'
+import lockIcon from '../../assets/lock.svg'
+import userIcon from '../../assets/user.svg'
+import waterIcon from '../../assets/water.svg'
+import fertilizeIcon from '../../assets/fertilize.svg'
+import checkIcon from '../../assets/check.svg'
 
 // ── Password strength helper ──────────────────────────────────────────────────
 function getStrength(pw) {
@@ -68,7 +74,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
 
   return (
     <form className="auth-form-enter" onSubmit={handleSubmit} noValidate>
-      <h2 className="auth-heading">Welcome back 🌿</h2>
+      <h2 className="auth-heading">Welcome back</h2>
       <p className="auth-subheading">Sign in to your GreenCare account to tend to your plants.</p>
 
       {error && (
@@ -81,7 +87,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
       <div className="auth-field">
         <label htmlFor="login-email">Email address</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">✉</span>
+          <img src={emailIcon} className="auth-input-icon" />
           <input
             id="login-email"
             type="email"
@@ -98,7 +104,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
       <div className="auth-field">
         <label htmlFor="login-password">Password</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">🔒</span>
+          <img src={lockIcon} className="auth-input-icon" />
           <input
             id="login-password"
             type={showPw ? 'text' : 'password'}
@@ -120,7 +126,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
         </div>
       </div>
 
-      <div className="auth-row">
+      {/* <div className="auth-row">
         <label className="auth-checkbox-label">
           <input
             type="checkbox"
@@ -132,7 +138,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
         <button type="button" className="auth-forgot" onClick={() => alert('Password reset is not available in this prototype.')}>
           Forgot password?
         </button>
-      </div>
+      </div> */}
 
       <button type="submit" className="auth-submit" disabled={loading}>
         <span className="auth-submit-inner">
@@ -142,7 +148,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
       </button>
 
       {/* Demo credentials */}
-      <div className="auth-demo-hint">
+      {/* <div className="auth-demo-hint">
         <div className="auth-demo-hint-title">Demo credentials</div>
         <div className="auth-demo-accounts">
           <div className="auth-demo-account">
@@ -156,7 +162,7 @@ function LoginForm({ onFillAdmin, onFillUser }) {
             <button type="button" className="auth-demo-fill" onClick={() => handleFill('user@greencare.app', 'user123')}>Fill</button>
           </div>
         </div>
-      </div>
+      </div> */}
     </form>
   )
 }
@@ -191,7 +197,7 @@ function SignupForm() {
 
   return (
     <form className="auth-form-enter" onSubmit={handleSubmit} noValidate>
-      <h2 className="auth-heading">Create account 🌱</h2>
+      <h2 className="auth-heading">Create account</h2>
       <p className="auth-subheading">Join GreenCare and start tracking your plant care journey.</p>
 
       {error && (
@@ -204,7 +210,7 @@ function SignupForm() {
       <div className="auth-field">
         <label htmlFor="signup-name">Full name</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">👤</span>
+          <img src={userIcon} className="auth-input-icon" />
           <input
             id="signup-name"
             type="text"
@@ -220,7 +226,7 @@ function SignupForm() {
       <div className="auth-field">
         <label htmlFor="signup-email">Email address</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">✉</span>
+          <img src={emailIcon} className="auth-input-icon" />
           <input
             id="signup-email"
             type="email"
@@ -236,7 +242,7 @@ function SignupForm() {
       <div className="auth-field">
         <label htmlFor="signup-password">Password</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">🔒</span>
+          <img src={lockIcon} className="auth-input-icon" />
           <input
             id="signup-password"
             type={showPw ? 'text' : 'password'}
@@ -271,7 +277,7 @@ function SignupForm() {
       <div className="auth-field" style={{ marginBottom: 24 }}>
         <label htmlFor="signup-confirm">Confirm password</label>
         <div className="auth-input-wrap">
-          <span className="auth-input-icon">🔒</span>
+          <img src={lockIcon} className="auth-input-icon" />
           <input
             id="signup-confirm"
             type={showConfirm ? 'text' : 'password'}
@@ -318,21 +324,21 @@ function BrandPanel() {
 
       <div className="auth-brand-cards">
         <div className="auth-brand-card auth-brand-card--1">
-          <span className="auth-brand-card-icon">🌿</span>
+          <img src={fertilizeIcon} className="auth-brand-card-icon" />
           <div>
             <div className="auth-brand-card-label">Luna · Monstera</div>
-            <div className="auth-brand-card-sub">Next watering: Tomorrow</div>
+            <div className="auth-brand-card-sub">Next fertilizing: Tomorrow</div>
           </div>
         </div>
         <div className="auth-brand-card auth-brand-card--2">
-          <span className="auth-brand-card-icon">✅</span>
+          <img src={checkIcon} className="auth-brand-card-icon" />
           <div>
             <div className="auth-brand-card-label">Task completed</div>
             <div className="auth-brand-card-sub">Fertilized Basil · Today</div>
           </div>
         </div>
         <div className="auth-brand-card auth-brand-card--3">
-          <span className="auth-brand-card-icon">💧</span>
+          <img src={waterIcon} className="auth-brand-card-icon" />
           <div>
             <div className="auth-brand-card-label">Watering streak</div>
             <div className="auth-brand-card-sub">12 days in a row 🔥</div>

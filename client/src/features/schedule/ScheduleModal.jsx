@@ -31,8 +31,6 @@ export function Modal({ preselectPlantId, onClose }) {
           status: formData.status || undefined,
           is_repeating: repeatDays
         }
-
-        console.log('Submitting new task with payload:', payload)
         actions.createTask(payload)
         if (onClose) onClose()
     }
@@ -96,14 +94,10 @@ export function Modal({ preselectPlantId, onClose }) {
                         </div>
                     </div>
                     <div className="form-row">
-                        <label>Notes</label>
-                        <textarea name="notes" rows="3" placeholder="Any additional notes?"></textarea>
-                    </div>
-                    <div className="form-row">
                         <label>Repeat</label>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <input type="number" name="repeatInterval" min="0" placeholder="Every (0 to disable)" style={{ width: '80px' }} />
-                            <select name="repeatUnit" defaultValue="days" style={{ width: '100px' }}>
+                            <select name="repeatUnit" defaultValue="days" style={{ width: '100%' }}>
                                 <option value="days">Days</option>
                                 <option value="weeks">Weeks</option>
                                 <option value="months">Months</option>

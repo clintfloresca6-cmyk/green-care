@@ -106,9 +106,8 @@ export function LibraryPage() {
 
           {/* Scrollable library grid */}
           <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '0 28px'
+            flex: 1, 
+            overflowY: 'auto'
           }}>
             <div className="library-grid">
               {loading && plants.length === 0 ? (
